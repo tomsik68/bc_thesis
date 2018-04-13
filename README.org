@@ -9,9 +9,8 @@ implementation of reaching definitions analysis using non-trivial set
 of benchmarks, for example [[https://github.com/sosy-lab/sv-benchmarks][SV-COMP benchmarks set]].
 
 * How to preview
-The most convenient way is to open thesis.org directly on Github. Github is
+The most convenient way is to open [[https://github.com/tomsik68/bc_thesis/blob/master/thesis.org][thesis.org]] directly on Github. Github is
 able to preview it with some small exceptions.
-
 
 ** How to compile
 I will use Emacs org-mode together with LaTeX to write this thesis.
