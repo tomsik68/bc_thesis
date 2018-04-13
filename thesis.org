@@ -1,0 +1,6 @@
+#+TITLE: Improvements of reaching definitions analysis in Symbiotic
+#+AUTHOR: Tomáš Jašek
+#+LATEX_CLASS:         fithesis
+#+OPTIONS:             todo:nil toc:nil
+#+LATEX_CLASS_OPTIONS: [nolot,nolof,color,oneside]
+#+LATEX_HEADER:        \input{setup.tex}

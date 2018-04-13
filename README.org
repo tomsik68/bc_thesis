@@ -1,0 +1,24 @@
+* Assignment
+The aim of this thesis is to speed of reaching definitions analysis in
+[[https://staticafi.github.io/symbiotic][Symbiotic]] tool. Student will study modern techniques of computing
+reaching definitions and briefly describe them. One of the techniques
+will be discussed in depth and implemented into Symbiotic. 
+
+The thesis shall contain experimental comparison of the old and new
+implementation of reaching definitions analysis using non-trivial set
+of benchmarks, for example [[https://github.com/sosy-lab/sv-benchmarks][SV-COMP benchmarks set]].
+
+* How to preview
+The most convenient way is to open thesis.org directly on Github. Github is
+able to preview it with some small exceptions.
+
+
+** How to compile
+I will use Emacs org-mode together with LaTeX to write this thesis.
+
+1. Produce =thesis.tex= by loading =thesis.org= in emacs hitting
+=C-c C-e l l=
+
+2. use =latexmk -pdf thesis.tex=.
+
+There is a =pvc= script that re-builds the pdf each time =thesis.tex= is updated.
