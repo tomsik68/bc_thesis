@@ -4,3 +4,258 @@
 #+OPTIONS:             todo:nil toc:nil
 #+LATEX_CLASS_OPTIONS: [nolot,nolof,color,oneside]
 #+LATEX_HEADER:        \input{setup.tex}
+* Introduction
+
+Nowadays, computer programs are used to control gadgets everywhere
+around us. Programs are used in wide variety of fields that impose
+diverse requirements on their reliability. For example, in medical
+applications, it is crucial that a program, which controls a piece of
+medical equipment does not misbehave or crash under any circumstances.
+
+On the other hand, programmers make mistakes very often. For example,
+a programmer could easily forget to close a curly brace or add a
+semicolon at the end of a line. Mistakes similar to those result into
+syntax errors. Compiler is able to detect them while processing the
+program and sometimes offer a suitable replacement, too.
+
+Compilers, however, do not understand intents of a human
+programmer. Therefore, it is still possible for the programmer to
+express their intents in an incorrect way producing a logical
+error. Compiler is also unable to detect mistakes that make the
+program access memory which is owned by, for example, some other
+program. On modern operating systems, these mistakes usually cause the
+program to crash.
+
+Several formal verification tools allow us to detect such
+errors. Symbiotic is one of them. Symbiotic preprocesses the program
+in a specific way and then passes it to symbolic execution framework
+klee which performs the verification itself. 
+
+As formal verification by itself is an expensive process\cite{_}, it
+is suitable to remove parts of the program that do not influence
+result of the verification process. This is called program
+slicing. Reaching definitions analysis is used during slicing to
+determine whether each instruction of the program could be removed.
+
+The aim of this thesis is to study some techniques of computing
+reaching definitions, implement a faster analysis to Symbiotic and
+compare the new implementation with the original one.
+
+** Structure of this thesis
+The second chapter introduces reader to program analysis in general
+and defines some key terms.  The third chapter explains what reaching
+definitions are, offers brief explanation of techniques for computing
+them.
+
+* Introduction to program analysis
+Before discussing algorithms more in depth, it is necessary to define
+some key terms used throughout the explanation.
+
+A /program/ is a sequence of some elementary instructions. Programs
+contain various types of instructions, but only a few of them work
+with memory. It is necessary to define 3 types of instructions:
+- =store %0 %1= - stored in register 0 and store it to memory address
+  in register 1
+- =%0 = load %1= - retrieve value from memory that is stored at
+  address in register 1 and store this value to register 0
+- =jump %2= - jump to block number 2
+
+# TODO is it necessary to define blocks?
+/Control flow graph/ (CFG\index{CFG}) of a program $\mathcal P$ is a
+graph $G = (V, E)$, where each instruction of $\mathcal P$ is
+represented by a vertex. If instruction $I_2$ /may/ be executed
+immediately after instruction $I_1$ in $\mathcal P$, then $(I_1, I_2) \in
+E$. Figure \ref{fig:programCFG} shows a simple program and its control flow graph.
+# TODO figure to demonstrate program and its control flow graph
+
+#+BEGIN_LaTeX
+  \begin{figure}
+  \begin{minipage}[t]{0.5\textwidth}
+simple program
+    \end{minipage}
+  \begin{minipage}[t]{0.5\textwidth}
+control flow graph
+  \end{minipage}
+  \caption{Program and its control flow graph}
+\label{fig:programCFG}
+  \end{figure}
+#+END_LaTeX
+
+# TODO better definition for variable
+A /variable/ is a fixed-size storage cell for value of some type.
+
+# TODO figure program and its reaching definitions
+
+A program $\mathcal P$ is in \textit{Static Single Assignment form}
+(SSA\index{SSA}) if, and only if for each variable in $\mathcal P$,
+there is at most one definition. Figure \ref{fig:programSSA} shows a
+simple program, its control flow graph and its SSA form.
+# TODO program and its SSA form
+
+#+BEGIN_LaTeX
+    \begin{figure}
+    \begin{minipage}[t]{0.3\textwidth}
+      simple program
+      \end{minipage}
+    \begin{minipage}[t]{0.3\textwidth}
+      control flow graph
+    \end{minipage}
+    \begin{minipage}[t]{0.3\textwidth}
+      SSA form
+    \end{minipage}
+    \caption{Program its control flow graph and SSA form}
+  \label{fig:programSSA}
+    \end{figure}
+#+END_LaTeX
+
+* Reaching Definitions Analysis
+
+Reaching definitions analysis is a part of static program
+analysis. For every use of each variable in program, it has to find all
+instructions in the program that modify the variable
+# TODO before does not work here, because of loops in program
+\textit{before} the place where it is used.
+
+** What is reaching definitions analysis
+
+A /reaching definition/ \index{RD} is a pair $(I_1, I_2)$ where:
++ $I_1, I_2 \in \mathcal P$
++ $I_1$ writes to variable $\mathcal V$
++ $I_2$ uses value of variable $\mathcal V$
+
+*** Strong \& weak definition
+When processing an indirect(pointer-based) definition of a variable,
+it is important to distinguish whether the pointer \textit{must} or
+\textit{may} point to given variable. If the pointer \textit{must}
+point to the variable, it is considered a strong update. Otherwise, it
+is considered a weak update.
+
+Therefore, it is important to distinguish between \textit{strong} and
+\textit{weak} updates of variables.
+
+** Dense reaching definitions analysis
+The simplest way to calculate reaching definitions is to "follow" the
+control flow graph of the program while remembering the last definition for
+each variable for each of its vertices.
+
+#+BEGIN_LaTeX
+  \begin{algorithm}[H]
+  \KwData{Control Flow Graph}
+  \KwResult{Reaching Definitions}
+  
+  \end{algorithm}
+#+END_LaTeX
+
+pseudo:
+
+[
+\text{do} \{ \\
+  \text{bfs}(CFG, \\
+  \lambda x \rightarrow \{
+    \text{forall} ( def(y) \in x ) \{
+        x.rd(y) \gets x.rd(y) \cup \{ x \}
+      \}
+    \}
+  \);
+  \} while(!fixpoint);
+
+]
+
+*** Performance penalty of the dense algorithm
+While dense algorithm is correct, it performs a lot of excessive work
+by copying information about reaching definitions to nodes where it is
+totally unnecessary.
+
+** Reaching definitions in programs that use pointers
+One of the most important features of C language are
+pointers. Pointers can be utilized, for example, to implement dynamic
+data structures, which are very widely used. However, pointers also
+add more ways the program can fail. For example, dereferencing a
+pointer with invalid value may cause the program to crash.
+
+As pointers make it possible to create variables that 
+# TODO change hold variables to something better
+"hold variables", they inherently make programs more difficult to
+understand and analyze.
+*** Pointer Analysis
+Pointer analysis is, similarly to reaching definitions analysis, a
+part of static program analysis. It creates a set $\mathcal V$ of
+variables for each pointer $p$. If $p$ may point to some variable $v$,
+then $v \in \mathcal V$.
+
+Reaching definitions analysis uses these data from pointer
+analysis to recognize uses and definitions of variables.
+** Algorithms based on static single assignment form
+Algorithms that transform a program into SSA form replace modified
+variables in assignments by new, artificially-created variables. They
+also replace variables in uses by the most recent definition --
+reaching definition. This property of SSA form can be utilized while
+calculating reaching definitions.
+# TODO program, SSA form, reaching definitions
+
+For the purpose of this thesis, I have studied two algorithms for
+computing reaching definitions. One of them has been introduced by
+Cytron et al \cite{CytronSSA} and relies on dominance frontiers.  The
+second algorithm, invented by Braun et al \cite{BraunSSA}, is simpler
+and more efficient.
+*** Cytron algorithm
+*** Marker algorithm
+
+
+* Symbiotic
+
+Symbiotic is a modular tool for formal verification of programs based
+on the LLVM compiler infrastructure. It is being developed at
+Faculty of Informatics, Masaryk University.
+
+Symbiotic works by combining three well-known techniques:
+1. Instrumentation
+2. Slicing
+3. Symbolic Execution
+
+Instrumentation is responsible for inserting memory access checks into
+the program. It overrides memory allocation functions by its own, that,
+besides performing the allocation itself, add the allocated memory
+along with allocation size into a global data structure. When
+dereferencing a pointer, instrumentation inserts a check to verify
+whether this pointer is inside allocated bounds or not. There is an
+assertion that crashes the program if a dereference is out of bounds
+of allocated memory.
+
+Slicing is a technique that reduces size of the program by removing
+parts that do not influence its correctness with respect to given
+criterion. 
+
+Symbolic execution is the last step. It is a technique that decides
+# TODO erroneous ??? is that a word?
+whether or not any erroneous state in program is reachable.
+** DG Library
+The slicer used in Symbiotic uses the dg library to calculate
+dependence graph and slice away unnecessary parts of verified program.
+New reaching definitions analysis has been implemented to the dg
+library, so it can be used with any software that uses dg.
+
+* Implementation
+** LLVM
+# TODO
+#+BEGIN_QUOTE
+The LLVM Project is a collection of modular and reusable compiler and toolchain technologies. \\
+-- https://llvm.org/
+#+END_QUOTE
+
+
+
+*** Partial static single assignment form
+
+
+* Experimental evaluation of semi-sparse analysis
+
+* Conclusion
+** Future Work
+It is possible to speed up computation of Reaching Definitions by
+incorporating the trivial phi node removal algorithm explained in Braun et
+al\cite{BraunSSA}.
+
+The =IntervalMap= data structure used in MarkerFS builder could be improved.
+
+# TODO bibliography
