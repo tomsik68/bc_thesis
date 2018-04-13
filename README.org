@@ -15,8 +15,7 @@ able to preview it with some small exceptions.
 ** How to compile
 I will use Emacs org-mode together with LaTeX to write this thesis.
 
-1. Produce =thesis.tex= by loading =thesis.org= in emacs hitting
-=C-c C-e l l=
+1. Produce =thesis.tex= by loading =thesis.org= in emacs hitting =C-c C-e l l=
 
 2. use =latexmk -pdf thesis.tex=.
 
