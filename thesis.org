@@ -131,16 +131,25 @@ simple program and its SSA form.
 
 #+BEGIN_LaTeX
     \begin{figure}
-    \begin{minipage}[t]{0.3\textwidth}
-      simple program
-      \end{minipage}
-    \begin{minipage}[t]{0.3\textwidth}
-      control flow graph
+    \begin{minipage}[t]{0.5\textwidth}
+      \begin{lstlisting}[language=C]
+        int i = 1;
+        int j = 1;
+        i = i + j;
+        j = j + i;
+        foo(i);
+      \end{lstlisting}
     \end{minipage}
-    \begin{minipage}[t]{0.3\textwidth}
-      SSA form
+    \begin{minipage}[t]{0.5\textwidth}
+      \begin{lstlisting}[language=C]
+      int i_1 = 3;
+      int j_1 = 4;
+      i_2 = i_1 + j_1;
+      j_2 = j_1 + i_2;
+      foo(i_2);
+      \end{lstlisting}
     \end{minipage}
-    \caption{Program its control flow graph and SSA form}
+    \caption{Program and its SSA form}
   \label{fig:programSSA}
     \end{figure}
 #+END_LaTeX
