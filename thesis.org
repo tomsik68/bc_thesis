@@ -219,14 +219,34 @@ definitions, but at most one strong definition.
 
 In programs without pointers, all definitions of variables are strong.
 
-]
+** Dense reaching definitions analysis
+\label{denseRDA}
+One of the ways to calculate reaching definitions is to "follow" the
+control flow graph of the program while remembering the last
+definition for each variable for each of its vertices.
+
+#+BEGIN_LaTeX
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \KwData{Control Flow Graph as $V_{CFG}$ and $E_{CFG}$}
+    \KwResult{Reaching Definitions}
+    \While {not fixpoint} {
+      \For{$v \in V_{CFG}$ in DFS order} {
+        \For{$def(x) \in v.defs$} {
+          $v.rd(x) \gets v.rd(x) \cup \{ v \}$ \;
+        }
+      }
+    }
+    \end{algorithm}
+#+END_LaTeX
 
 *** Performance penalty of the dense algorithm
-While dense algorithm is correct, it performs a lot of excessive work
+\label{densePP}
+While dense algorithm is correct, it performs excessive amount of work
 by copying information about reaching definitions to nodes where it is
 totally unnecessary.
 
-** Reaching definitions in programs that use pointers
+** Analyzing programs that use pointers
 One of the most important features of C language are
 pointers. Pointers can be utilized, for example, to implement dynamic
 data structures, which are very widely used. However, pointers also
@@ -237,6 +257,10 @@ As pointers make it possible to create variables that
 # TODO change hold variables to something better
 "hold variables", they inherently make programs more difficult to
 understand and analyze.
+
+In order to compute reaching definitions for address-taken variables,
+reaching definitions analysis uses data from pointer analysis.
+
 *** Pointer Analysis
 Pointer analysis is, similarly to reaching definitions analysis, a
 part of static program analysis. It creates a set $\mathcal V$ of
@@ -245,7 +269,22 @@ then $v \in \mathcal V$.
 
 Reaching definitions analysis uses these data from pointer
 analysis to recognize uses and definitions of variables.
+
+*** Field-sensitivity
+- treating each interval as different variable
+
+*** Strong & weak definitions in programs with pointers
+When processing an indirect(pointer-based) definition of a variable,
+it is important to distinguish whether the pointer \textit{must} or
+\textit{may} point to given variable. If the pointer \textit{must}
+point to the variable, it is considered a strong update. Otherwise, it
+is considered a weak update.
+
+Therefore, it is important to distinguish between \textit{strong} and
+\textit{weak} updates of variables.
+
 ** Algorithms based on static single assignment form
+\label{SSArd}
 Algorithms that transform a program into SSA form replace modified
 variables in assignments by new, artificially-created variables. They
 also replace variables in uses by the most recent definition --
