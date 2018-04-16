@@ -293,13 +293,30 @@ calculating reaching definitions.
 # TODO program, SSA form, reaching definitions
 
 For the purpose of this thesis, I have studied two algorithms for
-computing reaching definitions. One of them has been introduced by
+computing SSA form. One of them has been introduced by
 Cytron et al \cite{CytronSSA} and relies on dominance frontiers.  The
 second algorithm, invented by Braun et al \cite{BraunSSA}, is simpler
 and more efficient.
 *** Cytron algorithm
 *** Marker algorithm
+\label{marker}
 
+** Chosen approach to reaching definitions analysis
+
+In an attempt to avoid the performance penalty of the dense algorithm
+as described in \ref{densePP}, I have decided to implement a reaching
+definitions algorithm based on transformation to SSA form.
+# TODO why?? need to document other approaches aswell
+This thesis presents two algorithms for transformation into SSA form. I have
+decided to use Marker algorithm. Marker algorithm is simpler, easily
+extensible and there are multiple stages of implementation which
+leaves some room for further optimizations.
+
+
+Rather than propagating all information to every single node of the CFG,
+the amount of information propagated can be reduced by propagating
+only variables that are dereferenced only to nodes that correspond to
+instructions that use the variable.
 
 * Symbiotic
 
