@@ -155,55 +155,69 @@ simple program and its SSA form.
 #+END_LaTeX
 
 * Reaching Definitions Analysis
-
-Reaching definitions analysis is a part of static program
-analysis. For every use of each variable in program, it has to find all
-instructions in the program that modify the variable
-# TODO before does not work here, because of loops in program
-\textit{before} the place where it is used.
-
 ** What is reaching definitions analysis
 
-A /reaching definition/ \index{RD} is a pair $(I_1, I_2)$ where:
+Reaching definitions analysis is a part of static program
+analysis. For every use of each variable in program, it has to find
+all instructions of the program that modify the variable
+# TODO before does not work here, because of loops in program
+\textit{before} the place where it is used. 
+
+A /reaching definition/ \index{RD} of variable $\mathcal V$ used in
+instruction $I_1$ is an instruction $I_2$ such, that:
 + $I_1, I_2 \in \mathcal P$
-+ $I_1$ writes to variable $\mathcal V$
-+ $I_2$ uses value of variable $\mathcal V$
++ $I_1$ uses value of variable $\mathcal V$
++ $I_2$ writes to variable $\mathcal V$
 
-*** Strong \& weak definition
-When processing an indirect(pointer-based) definition of a variable,
-it is important to distinguish whether the pointer \textit{must} or
-\textit{may} point to given variable. If the pointer \textit{must}
-point to the variable, it is considered a strong update. Otherwise, it
-is considered a weak update.
+Figure \ref{fig:programRD} shows program's control flow graph with reaching definitions.
 
-Therefore, it is important to distinguish between \textit{strong} and
-\textit{weak} updates of variables.
-
-** Dense reaching definitions analysis
-The simplest way to calculate reaching definitions is to "follow" the
-control flow graph of the program while remembering the last definition for
-each variable for each of its vertices.
-
+# TODO figure: program and reaching definitions
 #+BEGIN_LaTeX
-  \begin{algorithm}[H]
-  \KwData{Control Flow Graph}
-  \KwResult{Reaching Definitions}
-  
-  \end{algorithm}
+  \begin{figure}
+    \begin{minipage}[b]{0.5\textwidth}
+      \begin{lstlisting}[language=C]
+        int i;
+        scanf("%d", &i);
+        if (i % 2 == 0)
+            puts("even");
+        else
+            puts("odd");
+        puts("exit");
+      \end{lstlisting}
+    \end{minipage}
+    \begin{minipage}[t]{0.5\textwidth}
+      \begin{tikzpicture}
+      \tikzstyle{arr} = [->,shorten <=1pt,>=stealth',semithick]
+        \node[draw, rectangle] (A) at (0, 0) {int i};
+        \node[draw, rectangle] (B) at (0, -1.2) {scanf("\%d", \&i)};
+        \node[draw, rectangle] (C) at (0, -2.4) {if i \% 2 == 0};
+        \node[draw, rectangle] (D) at (-1.5, -3.6) {puts("even")};
+        \node[draw, rectangle] (E) at (1.5, -3.6) {puts("odd")};
+        \node[draw, rectangle] (F) at (0, -4.8) {puts("exit")};
+        \draw[arr] (A) -- (B);
+        \draw[arr] (B) -- (C);
+        \draw[arr] (C) -- (D);
+        \draw[arr] (C) -- (E);
+        \draw[arr] (D) -- (F);
+        \draw[arr] (E) -- (F);
+      \end{tikzpicture}
+    \end{minipage}
+    \caption{Program in C language and its reaching definitions. Solid edges are part of CFG, dashed edges are reaching definitions.}
+    \label{fig:programRD}
+  \end{figure}
 #+END_LaTeX
 
-pseudo:
+*** Strong & weak definition
+Each definition of a variable can be either /strong/ or /weak/. Strong
+definition over-writes the variable with a new value. When a strong
+definition is encountered, it invalidates all previous definitions of
+the variable. Weak definition, on the other hand, does not necessarily
+over-write the variable and does not invalidate previous definitions.
 
-[
-\text{do} \{ \\
-  \text{bfs}(CFG, \\
-  \lambda x \rightarrow \{
-    \text{forall} ( def(y) \in x ) \{
-        x.rd(y) \gets x.rd(y) \cup \{ x \}
-      \}
-    \}
-  \);
-  \} while(!fixpoint);
+That means, for each use of a variable there might be multiple weak
+definitions, but at most one strong definition.
+
+In programs without pointers, all definitions of variables are strong.
 
 ]
 
