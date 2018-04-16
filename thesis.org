@@ -82,18 +82,39 @@ graph $G = (V, E)$, where each instruction of $\mathcal P$ is
 represented by a vertex. If instruction $I_2$ /may/ be executed
 immediately after instruction $I_1$ in $\mathcal P$, then $(I_1, I_2) \in
 E$. Figure \ref{fig:programCFG} shows a simple program and its control flow graph.
-# TODO figure to demonstrate program and its control flow graph
 
 #+BEGIN_LaTeX
   \begin{figure}
-  \begin{minipage}[t]{0.5\textwidth}
-simple program
+    \begin{minipage}[b]{0.5\textwidth}
+      \begin{lstlisting}[language=C]
+        int i;
+        scanf("%d", &i);
+        if (i % 2 == 0)
+            puts("even");
+        else
+            puts("odd");
+        puts("exit");
+      \end{lstlisting}
     \end{minipage}
-  \begin{minipage}[t]{0.5\textwidth}
-control flow graph
-  \end{minipage}
-  \caption{Program and its control flow graph}
-\label{fig:programCFG}
+    \begin{minipage}[t]{0.5\textwidth}
+      \begin{tikzpicture}
+      \tikzstyle{arr} = [->,shorten <=1pt,>=stealth',semithick]
+        \node[draw, rectangle] (A) at (0, 0) {int i};
+        \node[draw, rectangle] (B) at (0, -1.2) {scanf("\%d", \&i)};
+        \node[draw, rectangle] (C) at (0, -2.4) {if i \% 2 == 0};
+        \node[draw, rectangle] (D) at (-1.5, -3.6) {puts("even")};
+        \node[draw, rectangle] (E) at (1.5, -3.6) {puts("odd")};
+        \node[draw, rectangle] (F) at (0, -4.8) {puts("exit")};
+        \draw[arr] (A) -- (B);
+        \draw[arr] (B) -- (C);
+        \draw[arr] (C) -- (D);
+        \draw[arr] (C) -- (E);
+        \draw[arr] (D) -- (F);
+        \draw[arr] (E) -- (F);
+      \end{tikzpicture}
+    \end{minipage}
+    \caption{Program in C language and its control flow graph}
+    \label{fig:programCFG}
   \end{figure}
 #+END_LaTeX
 
