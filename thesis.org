@@ -62,15 +62,17 @@ definitions are, offers brief explanation of techniques for computing
 them.
 
 * Introduction to program analysis
-Before discussing algorithms more in depth, it is necessary to define
-some key terms used throughout the explanation.
+
+Before discussing reaching definitions more in depth, it is necessary to define
+some key terms of program analysis used throughout the explanation.
 
 A /program/ is a sequence of some elementary instructions. Programs
-contain various types of instructions, but only a few of them work
+contain various types of instructions, but only some types work
 with memory. It is necessary to define 3 types of instructions:
-- =store %0 %1= - stored in register 0 and store it to memory address
-  in register 1
-- =%0 = load %1= - retrieve value from memory that is stored at
+- =alloc %0= - allocate[fn::] a continous block of memory of size which is stored in register 0
+- =store %0 %1= - take the value stored in register 0 and store it to
+  memory address in register 1.
+- =%0 = load %1= - retrieve the value from memory that is stored at
   address in register 1 and store this value to register 0
 - =jump %2= - jump to block number 2
 
