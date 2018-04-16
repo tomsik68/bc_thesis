@@ -26,20 +26,34 @@ program access memory which is owned by, for example, some other
 program. On modern operating systems, these mistakes usually cause the
 program to crash.
 
-Several formal verification tools allow us to detect such
-errors. Symbiotic is one of them. Symbiotic preprocesses the program
-in a specific way and then passes it to symbolic execution framework
-klee which performs the verification itself. 
+Despite the availability of safe modern low-level programming
+languages, such as Rust, the C programming language is still very
+widespread. It is being used for critical purposes such as
+operating systems, embedded systems and device drivers. With its
+flexibility, it has some shortcomings that cause programmers to make
+mistakes often. One of the shortcomings is, that memory management is
+left to the programmer. A programmer could easily forget to free
+allocated memory, unintentionally free the same memory twice or forget
+to check the result of a memory allocation function.
 
-As formal verification by itself is an expensive process\cite{_}, it
-is suitable to remove parts of the program that do not influence
-result of the verification process. This is called program
-slicing. Reaching definitions analysis is used during slicing to
-determine whether each instruction of the program could be removed.
+Several formal verification tools are able to detect such errors. One
+of them is \sbt{} \cite{Symbiotic}. \sbt{} preprocesses the program in
+a specific way and then passes it to symbolic execution framework klee
+which performs the verification itself. As formal verification is an
+expensive process \cite{_}, it is suitable to remove parts of the
+program that do not influence result of the verification
+process. \sbt{} uses program slicing \cite{ChalupaDG} for
+this. 
 
-The aim of this thesis is to study some techniques of computing
-reaching definitions, implement a faster analysis to Symbiotic and
-compare the new implementation with the original one.
+Reaching definitions analysis is one of the analyses used during
+slicing. It finds all definitions of a variable that modify it before
+the place where it is being used. There are various approaches one can
+use to implement it.
+
+The aim of this thesis is to study modern techniques of computing
+reaching definitions, implement a faster analysis to \sbt{} and
+compare the new implementation with the original one experimentally
+using a non-trivial set of benchmarks.
 
 ** Structure of this thesis
 The second chapter introduces reader to program analysis in general
