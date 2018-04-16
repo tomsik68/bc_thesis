@@ -389,10 +389,43 @@ allocations.
 Each store instructions in the subgraph gets a points-to information
 from pointer analysis.
 
+** Reaching definitions analysis implementation approach
+The new reaching definitions analysis is implemented to the DG library.
 
-* Experimental evaluation of semi-sparse analysis
+*** Adding use information to control flow graph
+- add load nodes to subgraph
+- add information about variable uses
+- carefully set load size
+
+The first step to implement the new analysis is adding information
+about pointer dereferences - that is, LLVM =load= instructions to the
+reaching definitions subgraph. Pointer analysis is utilized here to
+find out which variables are being used
+
+While populating the subgraph with this
+information, it is important to supply valid information about length
+of the use site.
+
+*** Treating unknown memory
+- add uses/defs of all variables
+
+*** Treating unknown offset
+- stretch to max interval
+
+*** Splitting basic blocks on function calls
+- split basic block
+- inline the function
+
+*** Constructing a sparse RD graph
+- use the SSA algorithm to find def-use chains
+
+*** Computing reaching definitions from a sparse RD graph
+
+* Experimental evaluation of the new analysis
 
 * Conclusion
+** Summary of work done
+
 ** Future Work
 It is possible to speed up computation of Reaching Definitions by
 incorporating the trivial phi node removal algorithm explained in Braun et
