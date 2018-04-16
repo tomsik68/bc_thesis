@@ -118,15 +118,15 @@ E$. Figure \ref{fig:programCFG} shows a simple program and its control flow grap
   \end{figure}
 #+END_LaTeX
 
-# TODO better definition for variable
-A /variable/ is a fixed-size storage cell for value of some type.
+A /variable/ is a fixed-size storage cell for value of some type.  A
+/definition/ of a variable is any instruction that can
+modify its value. A /use/ of a variable is any instruction
+that can read its value.
 
-# TODO figure program and its reaching definitions
-
-A program $\mathcal P$ is in \textit{Static Single Assignment form}
-(SSA\index{SSA}) if, and only if for each variable in $\mathcal P$,
+A program $\mathcal P$ is in /Static Single Assignment form/
+(SSA form \index{SSA}) if, and only if for each variable in $\mathcal P$,
 there is at most one definition. Figure \ref{fig:programSSA} shows a
-simple program, its control flow graph and its SSA form.
+simple program and its SSA form.
 # TODO program and its SSA form
 
 #+BEGIN_LaTeX
