@@ -320,11 +320,12 @@ instructions that use the variable.
 
 * Symbiotic
 
-Symbiotic is a modular tool for formal verification of programs based
+\sbt{} is a modular tool for formal verification of programs based
 on the LLVM compiler infrastructure. It is being developed at
 Faculty of Informatics, Masaryk University.
 
-Symbiotic works by combining three well-known techniques:
+** How Symbiotic works
+\sbt{} works by combining three well-known techniques:
 1. Instrumentation
 2. Slicing
 3. Symbolic Execution
@@ -343,13 +344,8 @@ parts that do not influence its correctness with respect to given
 criterion. 
 
 Symbolic execution is the last step. It is a technique that decides
-# TODO erroneous ??? is that a word?
-whether or not any erroneous state in program is reachable.
-** DG Library
-The slicer used in Symbiotic uses the dg library to calculate
-dependence graph and slice away unnecessary parts of verified program.
-New reaching definitions analysis has been implemented to the dg
-library, so it can be used with any software that uses dg.
+whether the program could violate a condition of some assertion in the
+program.
 
 * Implementation
 ** LLVM
@@ -359,9 +355,39 @@ The LLVM Project is a collection of modular and reusable compiler and toolchain 
 -- https://llvm.org/
 #+END_QUOTE
 
-
+One of tools from the LLVM family is clang - compiler of C language to
+the LLVM intermediate representation (IR). LLVM IR is guaranteed to be
+in partial SSA form.
 
 *** Partial static single assignment form
+Partial SSA form means, that there is at most one definition for each
+register. This form of program, however, makes no guarantees about
+address-taken variables, which are *not* in SSA form.
+
+
+** DG Library
+The slicer used in \sbt{} uses the DG library to calculate dependence
+graph and slice away unnecessary parts of verified program. New
+reaching definitions analysis has been implemented to the DG library,
+so it can be used with any software that uses DG.
+
+DG itself provides multiple analyses that are independent of the
+assembly code used. It contains instantiation of those analyses for
+LLVM.
+
+DG is able to calculate control dependencies using information about
+reaching definitions. The old reaching definitions analysis in DG uses
+the dense approach, as described in \ref{denseRDA}.
+
+*** Reaching definitions analysis framework in the DG library
+Prior to the reaching definitions analysis itself, DG builds a
+subgraph of control flow graph\index{CFG}. The subgraph does not
+contain all types of instructions. Rather, it consists only of store
+instructions, call instructions, return instructions and all memory
+allocations.
+
+Each store instructions in the subgraph gets a points-to information
+from pointer analysis.
 
 
 * Experimental evaluation of semi-sparse analysis
