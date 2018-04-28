@@ -1,13 +1,19 @@
 \usepackage[resetfonts]{cmap}
 \usepackage[english]{babel}
 \usepackage[T1,T2A]{fontenc}
-\usepackage{makeidx}
 \usepackage{amsmath}
 \usepackage{amsthm}
 \usepackage{amsfonts}
-\usepackage{url}
 \usepackage{markdown}
 \usepackage{listings}
+%\usepackage[xindy]{imakeidx}
+\usepackage[backend=biber,
+            style=ieee,
+            maxnames=6,
+            alldates=iso8601]{biblatex}
+\usepackage{hyperref}
+\usepackage{url}
+\addbibresource{literature.bib}
 \usepackage{tikz}
 \usetikzlibrary{shapes, arrows, positioning, calc, fit, backgrounds,
   decorations.pathmorphing, decorations.markings, shadows}
