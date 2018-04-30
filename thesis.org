@@ -274,7 +274,7 @@ Reaching definitions analysis is a part of static program analysis.
 This chapter explains what a reaching definition and introduces
 various algorithms to calculate reaching definitions.
 
-A /reaching definition/ \index{RD} of variable $\mathcal V$ used in
+\label{def:RD}A /reaching definition/ \index{RD} of variable $\mathcal V$ used in
 instruction $I_1$ is an instruction $I_2$ such, that:
 + $I_1, I_2 \in \mathcal P$
 + $I_1$ is a use of variable $\mathcal V$
@@ -469,10 +469,13 @@ Figure \ref{fig:denseRDA} demonstrates the algorithm.
 #+END_LaTeX
 
 *** Performance penalty of the dense algorithm
-\label{densePP}
-While the dense algorithm is correct, it performs excessive amount of work
-by copying information about reaching definitions to nodes where it is
-totally unnecessary.
+\label{densePP} While the dense algorithm is correct, it performs
+excessive amount of work by copying information about reaching
+definitions to nodes of CFG where it is not necessary at all. Even in
+case the target CFG node $n$ uses some memory, it will get reaching
+definitions for all variables defined somewhere on a path from entry
+node to $n$. The dense algorithm certainly leaves some room for
+optimization.
 
 ** Analyzing programs that use pointers
 One of the most important features of programming languages are
