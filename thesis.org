@@ -97,7 +97,7 @@ sub-techniques of program analysis:
 An error-finding tool may use either approach or some combination
 of both. The following sub-chapter briefly introduces both techniques.
 
-** Static and dynamic program analysis
+** DONE Static and dynamic program analysis
 
 *Dynamic analysis* is capable of detecting an erroneous state in the
 program at runtime. For example, one could replace C =malloc= and
@@ -181,7 +181,7 @@ A /variable/ is a fixed-size storage cell for value of some type.  A
 modify its value. A /use/ of a variable is any instruction
 that can read its value. 
 
-** Static Single Assignment form
+** TODO Static single assignment form
 Programs may be transformed without changing their behaviour. One of
 transformations that do not change program's behaviour is
 transformation to Static Single Assignment form (or SSA for
@@ -593,11 +593,20 @@ predecessors of the current block. Once a definition is found, it is
 added as an operand to the \phi function.
 
 **** TODO Recursive function
-- =last_def= from LVN
+When looking up a definition of a variable from a predecessor block,
+the block does not have to be processed yet. If that is the case, the
+algorithm does not have any idea about which variables are defined in
+that block. This happens when the program's CFG is cyclic -
+e.g. recursive function is called or for loop is used.
+
+Because of that, the algorithm remembers the last definition of
+variable in a block during local value numbering. If there is no last
+definition in a block, the lookup can continue to predecessors
+recursively.
 
 **** TODO 
 
-** TODO Chosen approach to reaching definitions analysis
+** Chosen approach to reaching definitions analysis
 
 In an attempt to avoid the performance penalty of the dense algorithm
 as described in \ref{densePP}, I have decided to implement a reaching
@@ -615,12 +624,13 @@ the amount of information propagated can be reduced by propagating
 only variables that are dereferenced only to nodes that correspond to
 instructions that use the variable.
 
-*** Incorporating pointers
-*** Weak Updates
-*** Field sensitivity
+*** TODO Sparse RD Graph
+*** TODO Incorporating pointers
+*** TODO Weak Updates
+*** TODO Field sensitivity
 Braun et al.\nbsp{}\cite{BraunSSA}, however, do not elaborate on field
 sensitivity. In order to use it, it is necessary to modify it.
-*** Optimizations
+*** TODO Optimizations
 **** TODO Start lookup only in load instructions
 **** TODO Lookup only used variables
 **** TODO Strong updates stop the lookup
