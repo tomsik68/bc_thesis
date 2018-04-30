@@ -127,20 +127,10 @@ This thesis focuses on reaching definitions analysis, which is part of
 static analysis. The following sub-chapter continues with a more in-depth
 introduction to the static analysis.
 
-** Key terms of static program analysis
+** TODO Key terms of static program analysis
 
-A /program/ is a sequence of some elementary instructions. Programs
-contain various types of instructions, but only some of them are
-interesting for the scope of this thesis. It is necessary to define
-the following types of instructions:
-- =%1 = alloc %0= - allocate a continous block of memory of size which
-  is stored in register 0. Save the pointer to allocated block to
-  register 1.
-- =store %0 %1= - take the value stored in register 0 and store it to
-  memory address in register 1.
-- =%0 = load %1= - retrieve the value from memory that is stored at
-  address in register 1 and store this value to register 0
-- =jump %2= - jump to block number 2
+A /program/ is a sequence of some elementary instructions. This thesis
+focuses on analysing programs written in the C programming language.
 
 # TODO is it necessary to define blocks? - yes
 Program's structure is reflected in its /Control flow
@@ -193,12 +183,16 @@ that can read its value.
 
 ** Static Single Assignment form
 Programs may be transformed without changing their behaviour. One of
-the transformations that can be applied to a program is transformation
-to Static Single Assignment (or SSA) form\index{SSA}.
+transformations that do not change program's behaviour is
+transformation to Static Single Assignment form (or SSA for
+short). The transformation itself yields some useful data about the
+program and the SSA form is particularly useful for compilers and code
+analyzers.
 
-A program $\mathcal P$ is in /Static Single Assignment form/ if, and only if for each variable in $\mathcal P$, there
-is at most one definition. Figure\nbsp{}\ref{fig:programSSA} shows a simple
-program and its SSA form.
+A program $\mathcal P$ is in /Static Single Assignment form/ if, and
+only if for each variable in $\mathcal P$, there is at most one
+definition. Figure\nbsp{}\ref{fig:programSSA} shows a simple program and its
+SSA form.
 
 #+BEGIN_LaTeX
     \begin{figure}[]
@@ -229,7 +223,6 @@ Constructing the SSA form is a little more complex in case the control
 flow graph of a program contains loops. Consider program in
 Figure\nbsp{}\ref{fig:loop}
 
-\label{fig:loop}
 #+BEGIN_LaTeX
   \begin{figure}[h]
     \begin{minipage}[b]{0.5\textwidth}
@@ -264,7 +257,7 @@ at location =B= could be replaced by the assignment to =i= at location
 to the value of =i= at location =B=. It is, therefore, necessary to
 use some kind of combination of values from =A= and =C=. This is what
 a \phi function is for. $i_3 \gets \phi(i_1, i_2)$ denotes, that the value
-of $i_3$ could be either $i_1$ or $i_2$. 
+of $i_3$ could be either $i_1$ or $i_2$.
 
 * Reaching Definitions Analysis
 \label{ch:RDA}
@@ -547,12 +540,12 @@ Demand-driven reaching definitions analysis works by analyzing the CFG
 of a program backwards.
 
 *** chunk of text 						   :noexport:
-It can work faster by only searching reaching
-definitions of specified variables. This brings an advantage in case
-the analysis is used as a part of a slicer. Slicer is able to provide
-the analysis a list of variables it is interested in. Thanks to the
-lazy nature of the algorithm, the analysis can then operate faster by
-calculating reaching definitions only for relevant variables.x
+It can work faster by only searching reaching definitions of specified
+variables. This brings an advantage in case the analysis is used as a
+part of a slicer. Slicer is able to provide the analysis a list of
+variables it is interested in. Thanks to the lazy nature of the
+algorithm, the analysis can then operate faster by calculating
+reaching definitions only for relevant variables.
 ** TODO Algorithms based on static single assignment form
 \label{SSArd} Algorithms that transform a program into SSA form
 replace modified variables in assignments by new, artificially-created
@@ -571,8 +564,39 @@ Cytron et al\nbsp{}\cite{CytronSSA} and relies on dominance frontiers.  The
 second algorithm, invented by Braun et al\nbsp{}\cite{BraunSSA}, is simpler
 and has been experimentally proven to be more efficient\nbsp{}\cite{BraunSSA}.
 *** Cytron algorithm
+
+Algorithm introduced by Cytron et al.\nbsp{}\cite{CytronSSA} uses dominance
+information to pre-calculate locations of \phi functions. In the later
+phase, variables are numbered using a simple stack of counters and \phi
+functions are filled with operands.
+
 *** Marker algorithm
 \label{marker}
+
+The marker algorithm\nbsp{}\cite{BraunSSA} has two phases: local value
+numbering and global value numbering.
+
+During *local value numbering*, it computes SSA form of every basic
+block of the program. For every basic block, it iterates through all
+instructions in execution order. If an instruction $I$ defines some
+variable $\mathcal V$, $I$ is remembered as the current definition of
+$\mathcal V$. If an instruction $I$ uses some variable $\mathcal V$,
+the algorithm looks up its definition. If there is a current
+definition $\mathcal D$, the use of variable $\mathcal V$ is replaced
+by use of the numbered variable that corresponds to $\mathcal D$.
+
+*Global value numbering* is involved once no definition for the
+specified variable can be found in the current basic block. The
+algorithm places a \phi function on top of the current block and starts
+recursively searching the CFG for the latest definition in all
+predecessors of the current block. Once a definition is found, it is
+added as an operand to the \phi function.
+
+**** TODO Recursive function
+- =last_def= from LVN
+
+**** TODO 
+
 ** TODO Chosen approach to reaching definitions analysis
 
 In an attempt to avoid the performance penalty of the dense algorithm
@@ -596,6 +620,10 @@ instructions that use the variable.
 *** Field sensitivity
 Braun et al.\nbsp{}\cite{BraunSSA}, however, do not elaborate on field
 sensitivity. In order to use it, it is necessary to modify it.
+*** Optimizations
+**** TODO Start lookup only in load instructions
+**** TODO Lookup only used variables
+**** TODO Strong updates stop the lookup
 * TODO Symbiotic
 \label{ch:Symbiotic}
 \sbt{} is a modular tool for formal verification of programs based
@@ -626,10 +654,12 @@ whether the program could violate a condition of some assertion in the
 program.
 
 * Implementation
-\label{ch:Implementation}
-The new reaching definitions analysis is implemented in \sbt{}.
-** LLVM
-# TODO
+\label{ch:Implementation} This chapter starts by introducing the LLVM
+infrastructure and the DG library. The introduction is followed by an
+in-depth discussion of the new reaching definitions analysis
+implementation.
+
+** TODO LLVM
 #+BEGIN_QUOTE
 The LLVM Project is a collection of modular and reusable compiler and toolchain technologies. \\
 -- https://llvm.org/
@@ -639,7 +669,7 @@ One of tools from the LLVM family is clang - compiler of C language to
 the LLVM intermediate representation (IR). LLVM IR is guaranteed to be
 in partial SSA form.
 
-*** TODO LLVM Intermediate representation
+*** TODO LLVM Intermediate Representation
 - define important instructions
 *** TODO Partial static single assignment form
 \label{partialSSA}
@@ -672,18 +702,19 @@ contain all types of instructions. Rather, it consists only of store
 instructions, call instructions, return instructions and all memory
 allocations.
 
-Each instruction in the subgraph that defines some memory object gets
-a points-to information from pointer analysis. Thanks to this, it is
-possible to tell which variables are strongly or weakly defined by a
-store function and which variables are used by a load function.
+Each instruction in the subgraph that defines some memory object has
+an associated points-to information from pointer analysis. Thanks to
+this, it is possible to tell which variables are strongly or weakly
+defined by a store function.
 
 ** Reaching definitions analysis implementation approach
-The new reaching definitions analysis is implemented to the DG library.
+The new reaching definitions analysis is implemented in the DG
+library.
 
 Thanks to LLVM's transformation to partial SSA form (as described in
 \ref{partialSSA}), there is no need to take care of LLVM register
-variables, as they are already taken care of. The implementation
-focuses on address-taken variables.
+variables, as they are already taken care of. Therefore, the
+implementation focuses on address-taken variables.
 
 *** Subgraph builder abstractions
 As there are some modifications done to the subgraph builder, the
@@ -706,7 +737,8 @@ definitions subgraph from some representation. In this case, the
 representation is always LLVM. Therefore, I have designed and
 implemented an interface for subgraph builder called
 =LLVMRDBuilder=. This interface allows to implement a =build=
-function, that returns the reaching definitions subgraph.
+function, that returns the root node of the reaching definitions
+subgraph.
 
 In order to enable the selection of reaching definitions subgraph
 builder at the compile-time, I have introduced a helper class
@@ -734,19 +766,17 @@ analysis uses different subgraph builder: =LLVMRDBuilderSemisparse=.
 Then, in the =ReachingDefinitions= class, that is responsible for
 running reaching definitions analysis, I have enhanced the =run=
 method with a template that allows the user to specify the type of the
-desired reaching definitions analysis.
+desired reaching definitions analysis. The beginning of the =run=
+method now looks like this:
 
 #+BEGIN_SRC cpp
-    template <typename RdaType>
-    void run()
-    {
-        using BuilderT = typename detail::BuilderSelector<RdaType>::BuilderT;
-        builder = std::unique_ptr<LLVMRDBuilder>(new BuilderT(m, pta, pure_funs));
-        root = builder->build();
-
-        RDA = std::unique_ptr<ReachingDefinitionsAnalysis>(new RdaType(root));
-        RDA->run();
-    }
+  template <typename RdaType>
+  void run()
+  {
+      using BuilderT = typename detail::BuilderSelector<RdaType>::BuilderT;
+      builder = std::unique_ptr<LLVMRDBuilder>(new BuilderT(m, pta, pure_funs));
+      // ...
+  }
 #+END_SRC
 
 *** Adding use information to control flow graph
@@ -795,13 +825,25 @@ turn into weak definition of all variables in the program or use of
 all variables in the program, respectively. Doing this removes some
 complex handling of unknown pointers from the next phase of the analysis.
 *** TODO Field-sensitivity modifications for the Marker algorithm
+The Marker algorithm itself does not consider aggregate data
+structures. In order to support analyzing them, it needs to be
+modified a little.
 *** TODO interval mini-framework for the analysis
+Each definition or use of a variable have an associated interval of
+affected bytes. This interval is later used to look up reaching
+definitions of a variable.
+
 *** TODO Weak updates in the Marker algorithm
+- maintain separate data structures to hold the weak updates (=last_def=, =current_def=)
+- clear the data structures when strong update is encountered
+  - interval magic
 *** TODO Treating unknown offset
 - stretch to max interval
 
 *** TODO Constructing a sparse RD graph
-- use the Marker SSA algorithm to find def-use chains
+- the Marker algorithm usually constructs SSA form
+- but not in this case
+-  Marker algorithm is used only to find def-use chains and place \phi functions
 
 *** TODO Computing reaching definitions from a sparse RD graph
 - start by lazily searching the SRG backwards from load nodes
@@ -809,6 +851,7 @@ complex handling of unknown pointers from the next phase of the analysis.
 * Experimental evaluation of the new analysis
 \label{ch:Experiment}
 ** TODO Time
+** TODO Memory Used
 ** TODO Accuracy
 - the new analysis is more accurate
   #+BEGIN_SRC c
