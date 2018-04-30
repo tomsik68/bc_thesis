@@ -334,9 +334,10 @@ accuracy. Less accurate analyses need to make some conservative
 assumptions about the program in order to be correct.
 
 *** TODO instance-wise vs statement-wise
-When analyzing programs with loops, there are multiple /instances/ of
-instructions that are inside of a loop. Each iteration of the loop
-creates a new instance of each instruction in the loop's body.
+When analyzing programs with a cyclic control flow graph, there are
+multiple /instances/ of instructions that are inside of a loop. Each
+iteration of the loop creates a new instance of each instruction in
+the loop's body.
 
 Along with the definition, use and variable, an instance-wise reaching
 definitions analysis is able to tell which instance of the definition
@@ -495,8 +496,10 @@ part of static program analysis. It creates a set $\mathcal V$ of
 variables for each pointer $p$. If $p$ may point to some variable $v$,
 then $v \in \mathcal V$.
 
-Reaching definitions analysis uses these data from pointer
-analysis to recognize uses and definitions of variables.
+Reaching definitions analysis uses these data from pointer analysis to
+recognize uses and definitions of variables. Accuracy of the reaching
+definitions analysis, therefore, depends on accuracy of the underlying
+pointer analysis.
 
 *** Strong & weak definitions in programs with pointers
 When processing an indirect(pointer-based) definition of a variable,
@@ -553,6 +556,10 @@ replace modified variables in assignments by new, artificially-created
 variables. They also replace variables in uses by the most recent
 definition -- reaching definition. This property of SSA form can be
 utilized while calculating reaching definitions.
+
+# TODO maybe, define a simple framework for these algorithms
+# so they can be plugged in to the final reaching definitions stage
+
 # TODO program, SSA form, reaching definitions
 
 For the purpose of this thesis, I have studied two algorithms for
@@ -572,8 +579,9 @@ definitions algorithm based on transformation to SSA form.
 This thesis presents two algorithms for transformation into SSA
 form. I have decided to use Marker algorithm. Marker algorithm is
 simpler, easily extensible and there are multiple stages of
-implementation which leaves some room for further optimizations.
-
+implementation which leaves room for further optimizations. It has
+also been experimentally proven\nbsp{}\cite{BraunSSA} to be faster than
+Cytron et al algorithm.
 
 Rather than propagating all information to every single node of the CFG,
 the amount of information propagated can be reduced by propagating
@@ -763,12 +771,10 @@ length that is being used. This is done by copying the size of the
 type the value is being loaded to.
 
 *** TODO Splitting basic blocks on function calls
+- why splitting blocks?
 - split basic block
 - inline the function
-
-*** TODO Treating unknown memory
-- add uses/defs of all variables
-
+*** Treating unknown memory
 Sometimes, pointer analysis was unable to tell where a pointer may
 point, so the analysis has to make some conservative assumptions about
 the program in order to be correct. In this case, the analysis assumes
@@ -786,6 +792,7 @@ turn into weak definition of all variables in the program or use of
 all variables in the program, respectively. Doing this removes some
 complex handling of unknown pointers from the next phase of the analysis.
 *** TODO Field-sensitivity modifications for the Marker algorithm
+*** TODO interval mini-framework for the analysis
 *** TODO Weak updates in the Marker algorithm
 *** TODO Treating unknown offset
 - stretch to max interval
@@ -818,15 +825,37 @@ complex handling of unknown pointers from the next phase of the analysis.
     \{B,C,D,E\}$
 * Conclusion
 \label{ch:Summary}
-** Summary of work done
 
 ** Future Work
-It is possible to speed up computation of Reaching Definitions by
-incorporating the trivial phi node removal algorithm\nbsp{}\cite{BraunSSA}.
+
+It is possible to further speed up computation of Reaching Definitions
+by incorporating the trivial phi node removal
+algorithm\nbsp{}\cite{BraunSSA}. The sparse graph contains many redundant \phi
+functions that could be removed to speed up the final phase of
+reaching definitions propagation.
 
 The =IntervalMap= data structure used in MarkerFS builder could be improved.
 
-Instance-wise.
+The reaching definitions analysis could benefit from additional
+accuracy it could gain by considering different instances of
+statements.
+
+Newer versions of LLVM support a pass called
+mem2reg[fn::https://llvm.org/docs/Passes.html#mem2reg-promote-memory-to-register]. This
+pass is able to convert local variables into registers, which are in
+SSA form. It would be interesting to use mem2reg pass whenever
+possible and then run this analysis to obtain results for arrays and
+other structures mem2reg is unable to handle.
 
 # TODO bibliography
 \printbibliography[heading=bibintoc]
+
+** Summary of work done
+*** TODO study reaching definitions analyses
+*** TODO choose an SSA-based algorithm
+*** TODO extend the algorithm with field-sensitivity
+*** TODO extend the algorithm with weak updates
+*** TODO extend the dg subgraph builder framework
+*** TODO implement sparse RD graph builder
+*** TODO implement the reaching definitions analysis
+*** TODO experimental comparison of the new and old analysis
