@@ -328,9 +328,9 @@ That means, for each use of a variable there might be multiple weak
 definitions, but at most one strong definition.
 
 In programs without pointers, all definitions of variables are strong.
-** Properties of a reaching definitions analysis
-Reaching definitions analyses have some properties that affect how
-their accuracy. Less accurate analyses need to make some conservative
+** TODO Properties of a reaching definitions analysis
+Reaching definitions analyses have some properties that affect their
+accuracy. Less accurate analyses need to make some conservative
 assumptions about the program in order to be correct.
 
 *** TODO instance-wise vs statement-wise
@@ -338,16 +338,86 @@ When analyzing programs with loops, there are multiple /instances/ of
 instructions that are inside of a loop. Each iteration of the loop
 creates a new instance of each instruction in the loop's body.
 
-Among the definition, use and variable, an instance-wise reaching
+Along with the definition, use and variable, an instance-wise reaching
 definitions analysis is able to tell which instance of the definition
 reaches which instance of the use. The information about instance
 usually involves the for loop indexing variable =i=. There might be
 more variables in case the instruction is inside of a nested loop.
 
+**** TODO example
+
 *** TODO Field sensitivity
+Usage of aggregated data structures, such as arrays or C language
+=struct= introduces another issue that needs to be addressed by a
+reaching definitions analysis. Precision of analysis programs that use
+aggregated data structures depends on whether the analysis can
+distinguish between individual elements of the data structure.
+
+Consider the program in \ref{fig:rdaFS}. Locations =x= and =y= in the
+program define the first and second element of the array =a=. After
+that, location =z= contains a function call that uses the third
+element of the array. This element has no definitions in the program,
+so an accurate reaching definitions should find no definitions for it.
+
+A field sensitive analysis considers indices and correctly reports no
+reaching definitions for =a[2]= at location =z=.
+
+A field-insensitive analysis would ignore indices of the array and for
+location =z=, it would report, that reaching definitions of =a[2]= are
+locations =x= and =y=. This is an over-approximation the analysis is
+forced to perform in order to stay correct.
+
+#+BEGIN_LaTeX
+  \begin{figure}[H]
+    \begin{lstlisting}[language=C]
+      int a[5];
+      a[0] = 1; // x
+      a[1] = 2; // y
+      foo(a[2]); // z
+    \end{lstlisting}
+    \caption{Demonstration of field-sensitive reaching definitions analysis}
+    \label{fig:rdaFS}
+    \end{figure}
+#+END_LaTeX
+
+**** Weak updates
+#+BEGIN_SRC c
+  int a[5];
+  a[0] = 1;  // x
+  a[0] = 2;  // y
+  foo(a[0]); // z
+#+END_SRC
+
+FI: weak updates(it does not know about indices)
+x -> z
+y -> z
+
+FS: strong updates
+y -> z
+
+**** TODO Unknown indices and over-approximation
+If there are multiple instances of an instruction (e.g. it is part of
+a loop or recursive function), it could happen, that the index is
+simply unknown. Consider a simple program:
+
+#+BEGIN_SRC c
+  int a[5];
+
+  for(int i = 0; i < 2; ++i) {
+      a[i] = i; // x
+  }
+
+  for(int i = 0; i < 3; ++i) {
+      printf("%d\n", a[i]); // y
+  }
+#+END_SRC
+
+- consider as weak update
+- stretch it to whole array
 
 *** TODO Execution patterns recognition
-** Dense reaching definitions analysis
+
+** TODO Dense reaching definitions analysis
 \label{denseRDA}
 One of the ways to calculate reaching definitions is to ``follow'' the
 control flow graph of the program while remembering the last
@@ -356,8 +426,8 @@ definition for each variable for each of its vertices.
 Figure \ref{fig:denseRDA} demonstrates the algorithm.
 
 #+BEGIN_LaTeX
-\begin{figure}
-  \begin{algorithm}[H]
+\begin{figure}[H]
+  \begin{algorithm}
   \SetAlgoLined
   \KwData{Control Flow Graph as $V_{CFG}$ and $E_{CFG}$}
   \KwResult{Reaching Definitions}
@@ -441,8 +511,7 @@ arithmetic. Pointer analysis is unable to determine the offset,
 because it changes with every iteration of the for loop.[fn::Assuming
 for loop unrolling is not involved with the particular for loop]
 
-
-** Demand-driven reaching definitions analysis
+** TODO Demand-driven reaching definitions analysis
 In an attempt to avoid the performance penalty of the dense reaching
 definitions analysis (\ref{denseRDA}), several other algorithms have
 been introduced.
@@ -451,9 +520,7 @@ This subchapter briefly introduces demand-driven reaching definitions
 analysis\nbsp{}\cite{SootDDRDA}.
 
 Demand-driven reaching definitions analysis works by analyzing the CFG
-of a program backwards. 
-
-
+of a program backwards.
 
 *** chunk of text 						   :noexport:
 It can work faster by only searching reaching
@@ -462,28 +529,23 @@ the analysis is used as a part of a slicer. Slicer is able to provide
 the analysis a list of variables it is interested in. Thanks to the
 lazy nature of the algorithm, the analysis can then operate faster by
 calculating reaching definitions only for relevant variables.x
-
-
-
-** Algorithms based on static single assignment form
-\label{SSArd}
-Algorithms that transform a program into SSA form replace modified
-variables in assignments by new, artificially-created variables. They
-also replace variables in uses by the most recent definition --
-reaching definition. This property of SSA form can be utilized while
-calculating reaching definitions.
+** TODO Algorithms based on static single assignment form
+\label{SSArd} Algorithms that transform a program into SSA form
+replace modified variables in assignments by new, artificially-created
+variables. They also replace variables in uses by the most recent
+definition -- reaching definition. This property of SSA form can be
+utilized while calculating reaching definitions.
 # TODO program, SSA form, reaching definitions
 
 For the purpose of this thesis, I have studied two algorithms for
 computing SSA form. One of them has been introduced by
 Cytron et al\nbsp{}\cite{CytronSSA} and relies on dominance frontiers.  The
 second algorithm, invented by Braun et al\nbsp{}\cite{BraunSSA}, is simpler
-and more efficient.
+and has been experimentally proven to be more efficient\nbsp{}\cite{BraunSSA}.
 *** Cytron algorithm
 *** Marker algorithm
 \label{marker}
-
-** Chosen approach to reaching definitions analysis
+** TODO Chosen approach to reaching definitions analysis
 
 In an attempt to avoid the performance penalty of the dense algorithm
 as described in \ref{densePP}, I have decided to implement a reaching
@@ -505,7 +567,7 @@ instructions that use the variable.
 *** Field sensitivity
 Braun et al.\nbsp{}\cite{BraunSSA}, however, do not elaborate on field
 sensitivity. In order to use it, it is necessary to modify it.
-* Symbiotic
+* TODO Symbiotic
 \label{ch:Symbiotic}
 \sbt{} is a modular tool for formal verification of programs based
 on the LLVM compiler infrastructure. It is being developed at
@@ -548,7 +610,9 @@ One of tools from the LLVM family is clang - compiler of C language to
 the LLVM intermediate representation (IR). LLVM IR is guaranteed to be
 in partial SSA form.
 
-*** Partial static single assignment form
+*** TODO LLVM Intermediate representation
+- define important instructions
+*** TODO Partial static single assignment form
 \label{partialSSA}
 Partial SSA form means, that there is at most one definition for each
 register. This form of program, however, makes no guarantees about
@@ -572,7 +636,7 @@ DG is able to calculate control dependencies using information about
 reaching definitions. The old reaching definitions analysis in DG uses
 the dense approach, as described in \ref{denseRDA}.
 
-*** Reaching definitions analysis framework in the DG library
+*** TODO Reaching definitions analysis framework in the DG library
 Prior to the reaching definitions analysis itself, DG builds a
 subgraph of program's control flow graph\index{CFG}. The subgraph does not
 contain all types of instructions. Rather, it consists only of store
@@ -647,8 +711,6 @@ desired reaching definitions analysis.
     template <typename RdaType>
     void run()
     {
-        // this helps while guessing causes of template substitution errors
-        static_assert(std::is_base_of<ReachingDefinitionsAnalysis, RdaType>::value, "RdaType has to be subclass of ReachingDefinitionsAnalysis");
         using BuilderT = typename detail::BuilderSelector<RdaType>::BuilderT;
         builder = std::unique_ptr<LLVMRDBuilder>(new BuilderT(m, pta, pure_funs));
         root = builder->build();
@@ -682,11 +744,11 @@ reaching definitions analysis requires the length to be set to the
 length that is being used. This is done by copying the size of the
 type the value is being loaded to.
 
-*** Splitting basic blocks on function calls
+*** TODO Splitting basic blocks on function calls
 - split basic block
 - inline the function
 
-*** Treating unknown memory
+*** TODO Treating unknown memory
 - add uses/defs of all variables
 
 Sometimes, pointer analysis was unable to tell where a pointer may
@@ -705,20 +767,21 @@ every store to an unknown pointer and load from an unknown pointer
 turn into weak definition of all variables in the program or use of
 all variables in the program, respectively. Doing this removes some
 complex handling of unknown pointers from the next phase of the analysis.
-
-*** Treating unknown offset
+*** TODO Field-sensitivity modifications for the Marker algorithm
+*** TODO Weak updates in the Marker algorithm
+*** TODO Treating unknown offset
 - stretch to max interval
 
-*** Constructing a sparse RD graph
+*** TODO Constructing a sparse RD graph
 - use the Marker SSA algorithm to find def-use chains
 
-*** Computing reaching definitions from a sparse RD graph
+*** TODO Computing reaching definitions from a sparse RD graph
 - start by lazily searching the SRG backwards from load nodes
 
 * Experimental evaluation of the new analysis
 \label{ch:Experiment}
-** Time
-** Accuracy
+** TODO Time
+** TODO Accuracy
 - the new analysis is more accurate
   #+BEGIN_SRC c
     int a[] = {0, 1, 2, 3}; // A
