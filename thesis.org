@@ -847,6 +847,11 @@ SSA form. It would be interesting to use mem2reg pass whenever
 possible and then run this analysis to obtain results for arrays and
 other structures mem2reg is unable to handle.
 
+Another interesting LLVM pass to test would be scalar replacement of
+aggregates[fn::https://llvm.org/docs/Passes.html#sroa-scalar-replacement-of-aggregates]. This
+pass replaces arrays and structures by scalar values in case it is
+possible.
+
 # TODO bibliography
 \printbibliography[heading=bibintoc]
 
