@@ -1,2 +1,2 @@
 #!/bin/bash
-latexmk thesis.tex -pdf -pvc
+latexmk thesis.tex -pdf -pvc -silent
