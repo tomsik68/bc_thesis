@@ -709,7 +709,7 @@ sensitivity. In order to use it, it is necessary to modify it.
 on the LLVM compiler infrastructure. It is being developed at
 Faculty of Informatics, Masaryk University.
 
-** How Symbiotic works
+** TODO How Symbiotic works
 \sbt{} works by combining three well-known techniques:
 1. Instrumentation
 2. Slicing
@@ -732,7 +732,7 @@ Symbolic execution is the last step. It is a technique that decides
 whether the program could violate a condition of some assertion in the
 program.
 
-* Implementation
+* TODO Implementation
 \label{ch:Implementation} This chapter starts by introducing the LLVM
 infrastructure and the DG library. The introduction is followed by an
 in-depth discussion of the new reaching definitions analysis
@@ -760,7 +760,7 @@ address-taken variables, which are *not* in SSA form.
 Thanks to the partial SSA transformation, LLVM already provides
  reaching definitions information for its register variables.
 
-** DG Library
+** TODO DG Library
 The slicer used in \sbt{} uses the DG library to calculate dependence
 graph and slice away unnecessary parts of verified program. New
 reaching definitions analysis has been implemented to the DG library,
@@ -776,26 +776,29 @@ the dense approach, as described in \ref{denseRDA}.
 
 *** TODO Reaching definitions analysis framework in the DG library
 Prior to the reaching definitions analysis itself, DG builds a
-subgraph of program's control flow graph\index{CFG}. The subgraph does not
-contain all types of instructions. Rather, it consists only of store
-instructions, call instructions, return instructions and all memory
-allocations.
+subgraph of program's control flow graph\index{CFG}. The subgraph does
+not contain all types of instructions. Rather, it consists only of
+store instructions, call instructions, return instructions and all
+memory allocations. In spite of not containing all instructions, it
+reflects structure of the program.
 
 Each instruction in the subgraph that defines some memory object has
 an associated points-to information from pointer analysis. Thanks to
 this, it is possible to tell which variables are strongly or weakly
 defined by a store function.
 
-** Reaching definitions analysis implementation approach
+** TODO Reaching definitions analysis implementation approach
 The new reaching definitions analysis is implemented in the DG
-library.
+library. This chapter describes how the new reaching definitions
+analysis has been implemented in the existing framework.
 
 Thanks to LLVM's transformation to partial SSA form (as described in
 \ref{partialSSA}), there is no need to take care of LLVM register
-variables, as they are already taken care of. Therefore, the
+variables, as they are already taken care of while translating the C
+program into LLVM Intermediate Representation. Therefore, the
 implementation focuses on address-taken variables.
 
-*** Subgraph builder abstractions
+*** DONE Subgraph builder abstractions
 As there are some modifications done to the subgraph builder, the
 first step towards the implementation is to introduce an abstraction
 for reaching definitions subgraph builder. The abstraction allows the
@@ -858,7 +861,7 @@ method now looks like this:
   }
 #+END_SRC
 
-*** Adding use information to control flow graph
+*** DONE Adding use information to control flow graph
 
 Now, the subgraph builder can add information about pointer
 dereferences - that is, LLVM =load= instructions to the reaching
@@ -879,14 +882,14 @@ The =load= instruction could possibly use a smaller portion of the
 memory than the allocation size. This is the case when accessing an
 individual element of a larger data structure. A field-sensitive
 reaching definitions analysis requires the length to be set to the
-length that is being used. This is done by copying the size of the
+length that is being used. This is done by determining size of the
 type the value is being loaded to.
 
 *** TODO Splitting basic blocks on function calls
 - why splitting blocks?
 - split basic block
 - inline the function
-*** Treating unknown memory
+*** TODO Treating unknown memory
 Sometimes, pointer analysis was unable to tell where a pointer may
 point, so the analysis has to make some conservative assumptions about
 the program in order to be correct. In this case, the analysis assumes
@@ -903,31 +906,84 @@ every store to an unknown pointer and load from an unknown pointer
 turn into weak definition of all variables in the program or use of
 all variables in the program, respectively. Doing this removes some
 complex handling of unknown pointers from the next phase of the analysis.
-*** TODO Field-sensitivity modifications for the Marker algorithm
+*** TODO Field-sensitivity
 The Marker algorithm itself does not consider aggregate data
 structures. In order to support analyzing them, it needs to be
 modified a little.
-*** TODO interval mini-framework for the analysis
+
 Each definition or use of a variable have an associated interval of
 affected bytes. This interval is later used to look up reaching
-definitions of a variable.
+definitions of a variable. An interval has a start and a length.
 
-*** TODO Weak updates in the Marker algorithm
-- maintain separate data structures to hold the weak updates (=last_def=, =current_def=)
+Intervals act as an abstraction on top of definition sites. They make
+it possible to calculate an intersection or union.
+
+The first intermediate data structure that is part of this framework
+is DisjointIntervalSet. The set allows to insert intervals while
+maintaining an invariant, that all intervals inside are disjoint. When
+inserting an interval that has a non-empty intersection with some of
+the intervals inside, the set ensures that these two intervals are
+converted into a single interval, which is a union of the two.
+
+IntervalMap is the second important data structure of the
+framework. It provides functionality that makes the analysis
+field-sensitive. IntervalMap on the first sight looks similarly to
+=std::map= available in C++. It allows to save arbitrary types under
+=Interval= keys. The difference is in the lookup
+functions. IntervalMap offers two lookup functions: =collect= and
+=collectAll=. 
+
+The =collect= function is designed to work with strong updates. It
+searches the entries backwards, starting by the last entry added. 
+# TODO this is true, but it is not what collect does
+It collects all values from the interval map such, that the specified
+interval is covered by union of key intervals of the values returned.
+
+The =collectAll= works with weak updates. As opposed to =collect=, it
+does not stop when the specified interval is subset of union of the
+result key intervals. Rather, it searches the whole IntervalMap and
+returns all values which are saved under intervals that overlap with
+the specified interval.
+
+*** TODO Weak updates
 - clear the data structures when strong update is encountered
   - interval magic
+
+The Marker algorithm maintains two main data structures for processing
+the strong updates: =last_def=, =current_def=. To incorporate weak
+updates, they have been duplicated with names =last_weak_def= and
+=current_weak_def=.
+
+=last_weak_def= is used during local value numbering to remember the
+last weak definition in a block. When a strong definition is
+encountered, overlapping weak definitions are either killed or have
+their definition intervals shrank.
+
+When a strong definition is encountered during global variable
+numbering, current weak definitions that overlap with the strong
+definition must be killed.
+
+#+BEGIN_SRC cpp
+  current_weak_def[var.target][block].killOverlapping(interval);
+#+END_SRC
+
+Encountering a weak update involves simply adding it to =current_def=
+in global value numbering, or =last_def= in local value numbering.
+
 *** TODO Treating unknown offset
 - stretch to max interval
+- weak update
 
 *** TODO Constructing a sparse RD graph
 - the Marker algorithm usually constructs SSA form
 - but not in this case
--  Marker algorithm is used only to find def-use chains and place \phi functions
+- Marker algorithm is used only to find def-use chains and place \phi functions
+- def-use chains, defs, uses, \phi nodes together form sparse RD graph
 
 *** TODO Computing reaching definitions from a sparse RD graph
 - start by lazily searching the SRG backwards from load nodes
 
-* Experimental evaluation of the new analysis
+* TODO Experimental evaluation of the new analysis
 \label{ch:Experiment}
 ** TODO Time
 ** TODO Memory Used
@@ -948,16 +1004,22 @@ definitions of a variable.
   - the new analysis is able to tell that $\{B,C,D,E\}$ together
     over-write the whole range of =a= and therefore reports $RD(a) =
     \{B,C,D,E\}$
-* Conclusion
+* TODO Conclusion
 \label{ch:Summary}
 
-** Future Work
+** TODO Future Work
 
 It is possible to further speed up computation of Reaching Definitions
 by incorporating the trivial phi node removal
 algorithm\nbsp{}\cite{BraunSSA}. The sparse graph contains many redundant \phi
 functions that could be removed to speed up the final phase of
 reaching definitions propagation.
+
+As the algorithm is implemented in a slicer, could be improved even
+further by starting at the slicing criterion and searching the control
+flow graph backwards for definitions of variables that affect the
+slicing criterion, which is what the slicer needs to derive the
+control dependencies.
 
 The =IntervalMap= data structure used in MarkerFS builder could be improved.
 
@@ -977,10 +1039,7 @@ aggregates[fn::https://llvm.org/docs/Passes.html#sroa-scalar-replacement-of-aggr
 pass replaces arrays and structures by scalar values in case it is
 possible.
 
-# TODO bibliography
-\printbibliography[heading=bibintoc]
-
-** Summary of work done
+** TODO Summary of work done
 *** TODO study reaching definitions analyses
 *** TODO choose an SSA-based algorithm
 *** TODO extend the algorithm with field-sensitivity
@@ -989,3 +1048,5 @@ possible.
 *** TODO implement sparse RD graph builder
 *** TODO implement the reaching definitions analysis
 *** TODO experimental comparison of the new and old analysis
+
+\printbibliography[heading=bibintoc]
