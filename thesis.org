@@ -131,7 +131,7 @@ introduction to the static analysis.
 
 A /program/ is a sequence of some elementary instructions. This thesis
 focuses on analysing programs written in the C programming language.
-
+# TODO say that the term /program/ will refer to C program?
 # TODO is it necessary to define blocks? - yes
 Program's structure is reflected in its /Control flow
 graph/. Formally, /control flow graph/ (CFG\index{CFG}) of a program
@@ -219,9 +219,8 @@ SSA form.
     \end{figure}
 #+END_LaTeX
 
-Constructing the SSA form is a little more complex in case the control
-flow graph of a program contains loops. Consider program in
-Figure\nbsp{}\ref{fig:loop}
+Constructing the SSA form is a little more complex in case the CFG of
+a program contains loops. Consider program in Figure\nbsp{}\ref{fig:loop}.
 
 #+BEGIN_LaTeX
   \begin{figure}[h]
@@ -262,10 +261,11 @@ of $i_3$ could be either $i_1$ or $i_2$.
 * Reaching Definitions Analysis
 \label{ch:RDA}
 # TODO invent notation for =z= is a reaching definition of =a= at =y=.
-Reaching definitions analysis is a part of static program analysis.
+Reaching definitions analysis(RDA for short) is a part of static program analysis.
 
-This chapter explains what a reaching definition and introduces
-various algorithms to calculate reaching definitions.
+This chapter explains what a reaching definition is, discusses
+properties of reaching definitions analyses and introduces various
+algorithms to calculate reaching definitions.
 
 \label{def:RD}A /reaching definition/ \index{RD} of variable $\mathcal V$ used in
 instruction $I_1$ is an instruction $I_2$ such, that:
@@ -273,7 +273,7 @@ instruction $I_1$ is an instruction $I_2$ such, that:
 + $I_1$ is a use of variable $\mathcal V$
 + $I_2$ is a definition of variable $\mathcal V$
 
-Figure \ref{fig:programRD} shows program's control flow graph with reaching definitions.
+Figure \ref{fig:programRD} shows program's CFG with reaching definitions.
 
 # TODO figure: program and reaching definitions
 #+BEGIN_LaTeX
@@ -311,32 +311,48 @@ Figure \ref{fig:programRD} shows program's control flow graph with reaching defi
   \end{figure}
 #+END_LaTeX
 
+** TODO Strong and weak definitions, kill and gen sets
+\label{strongWeakUpdate}
+A reaching definitions analysis processes stores and loads in some
+way. There are two different views on the same problem.
+- pointer points at multiple variables
+  - definition of that pointer is weak definition
+  - kill set does not contain the pointer, gen does
+
 Each definition of a variable can be either /strong/ or /weak/. Strong
 definition over-writes the variable with a new value. When a strong
 definition is encountered, it invalidates all previous definitions of
 the variable. Weak definition, on the other hand, does not necessarily
-over-write the variable and does not invalidate previous definitions.
+over-write the variable, so it does not invalidate previous definitions.
 
 That means, for each use of a variable there might be multiple weak
 definitions, but at most one strong definition.
 
-In programs without pointers, all definitions of variables are strong.
-** TODO Properties of a reaching definitions analysis
-Reaching definitions analyses have some properties that affect their
-accuracy. Less accurate analyses need to make some conservative
-assumptions about the program in order to be correct.
+In programs that do not use pointers, all definitions of variables are
+strong.
 
-*** TODO instance-wise vs statement-wise
-When analyzing programs with a cyclic control flow graph, there are
-multiple /instances/ of instructions that are inside of a loop. Each
-iteration of the loop creates a new instance of each instruction in
-the loop's body.
+** TODO Properties of reaching definitions analyses
+Reaching definitions analyses have some properties\nbsp{}\cite{rptRDA} that
+affect their accuracy. Less accurate analyses need to make some
+conservative assumptions about the program in order to be
+correct. This sub-chapter describes three properties of reaching
+definitions analyses: field-sensitivity, instance-wiseness and ability
+to recognize execution patterns.
+
+*** DONE Instance-wise and statement-wise analysis
+When analyzing programs with a cyclic CFG, there are multiple
+/instances/ of instructions that are inside of a loop. Each iteration
+of the loop creates a new instance of each instruction in the loop's
+body.
 
 Along with the definition, use and variable, an instance-wise reaching
-definitions analysis is able to tell which instance of the definition
-reaches which instance of the use. The information about instance
-usually involves the for loop indexing variable =i=. There might be
+definitions analysis is able to tell which instance of the
+instructions are involved. The information about instance might
+involve for example the for loop indexing variable =i=. There might be
 more variables in case the instruction is inside of a nested loop.
+
+Differences between instance-wise analysis and statement-wise analysis
+will be demonstrated on a simple program in figure \ref{fig:instWise}.
 
 #+BEGIN_SRC c
   int a = 0; // x
@@ -346,6 +362,7 @@ more variables in case the instruction is inside of a nested loop.
       a = b; // z
   }
 #+END_SRC
+\label{fig:instWise}
 
 Reaching definitions for =a= at location =y= should be =x= and
 =z=. However, there are multiple instances of instructions =y= and
@@ -354,30 +371,30 @@ report, that =x= is a reaching definition of =a= at =y=. The
 difference is, how much information the analysis is able to provide
 about the reaching definition =z= at =y=. Statement-wise analysis
 would simply state, that =z= is a reaching definition of =a= at
-=y=. Instance-wise analysis goes a little further by returning, that
-$z^{i+1}$ is a reaching definition of =a= at $y^i$. The upper index in the
-notation denotes the index of iteration.
+=y=. Instance-wise analysis goes a little further by reporting, that
+$z^{i+1}$ is a reaching definition of =a= at $y^i$. The upper index
+denotes the index of iteration.
 
-*** TODO Field sensitivity
+*** DONE Field sensitivity
 Usage of aggregated data structures, such as arrays or C language
-=struct= introduces another issue that needs to be addressed by a
-reaching definitions analysis. Precision of analysis programs that use
-aggregated data structures depends on whether the analysis can
+=struct=-s introduces another issue that needs to be addressed by a
+reaching definitions analysis. Precision of analysis for programs that
+use aggregated data structures depends on whether the analysis can
 distinguish between individual elements of the data structure.
 
-Consider the program in \ref{fig:rdaFS}. Locations =x= and =y= in the
-program define the first and second element of the array =a=. After
+Consider the program in Figure\nbsp{}\ref{fig:rdaFS}. Locations =x= and =y= in the
+program define the first and the second element of the array =a=. After
 that, location =z= contains a function call that uses the third
 element of the array. This element has no definitions in the program,
 so an accurate reaching definitions should find no definitions for it.
 
-A field sensitive analysis considers indices and correctly reports no
+A field-sensitive analysis considers indices and correctly reports no
 reaching definitions for =a[2]= at location =z=.
 
-A field-insensitive analysis would ignore indices of the array and for
+A field-insensitive analysis ignores indices of the array and for
 location =z=, it would report, that reaching definitions of =a[2]= are
-locations =x= and =y=. This is an over-approximation the analysis is
-forced to perform in order to stay correct.
+=x= and =y=. This is an over-approximation that has to be performed by
+the field-insensitive analysis.
 
 #+BEGIN_LaTeX
   \begin{figure}[H]
@@ -392,7 +409,7 @@ forced to perform in order to stay correct.
     \end{figure}
 #+END_LaTeX
 
-**** Weak updates
+**** TODO Multiple definitions of a variable
 #+BEGIN_SRC c
   int a[5];
   a[0] = 1;  // x
@@ -407,7 +424,7 @@ y -> z
 FS: strong updates
 y -> z
 
-**** TODO Unknown indices and over-approximation
+**** TODO Unknown offsets and over-approximation
 If there are multiple instances of an instruction (e.g. it is part of
 a loop or recursive function), it could happen, that the index is
 simply unknown. Consider a simple program:
@@ -415,6 +432,7 @@ simply unknown. Consider a simple program:
 #+BEGIN_SRC c
   int a[5];
 
+  a[2] = 15;
   for(int i = 0; i < 2; ++i) {
       a[i] = i; // x
   }
@@ -424,10 +442,47 @@ simply unknown. Consider a simple program:
   }
 #+END_SRC
 
-- consider as weak update
-- stretch it to whole array
+Assuming that no for loop is unrolled by the compiler, reaching
+definitions analysis is unable to tell which part of =a= is being
+defined at location =x=.
 
-*** TODO Execution patterns recognition
+- stretch it to whole array
+- consider as weak update
+
+*** DONE Execution patterns recognition
+
+Reaching definitions analysis is often not the only analysis that is
+part of a program analysis framework. More often than not, there are
+more analyses that derive various properties of program or its
+parts. Reaching definitions analysis can sometimes take advantage of
+results of previously ran analyses and achieve better accuracy or
+speed.
+
+Consider the program in figure\nbsp{}\ref{fig:execPatterns}.
+
+#+BEGIN_SRC c
+  int foo(int a) {
+      int c = 0;
+      if (a < 0) {
+          c = 1; // x
+      }
+      if (a >= 0) {
+          c = 2; // y
+      }
+      return c; // z
+  }
+#+END_SRC
+\label{fig:execPatterns}.
+
+If an external analysis reports that there is no program execution
+where $a < 0$, the reaching definitions analysis could take this into
+account and derive that =x= is not a reaching definition of =c= at =z=
+even despite the fact it is a definition of a simple
+variable. Analysis that does not take it into account would report
+that both =x= and =y= are reaching definitions of =c= at =z=.
+
+In this case, an analysis that does not recognize execution patterns
+yields an over-approximation, which is not a problem.
 
 ** TODO Dense reaching definitions analysis
 \label{denseRDA}
