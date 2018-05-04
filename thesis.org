@@ -485,10 +485,10 @@ In this case, an analysis that does not recognize execution patterns
 yields an over-approximation, which is not a problem.
 
 ** TODO Dense reaching definitions analysis
-\label{denseRDA}
-One of the ways to calculate reaching definitions is to ``follow'' the
-control flow graph of the program while remembering the last
-definition for each variable for each of its vertices.
+\label{denseRDA} One of the ways to calculate reaching definitions is
+to ``follow'' the control flow graph of the program while remembering
+the last definition for each variable for each of its vertices. This
+is a traditional approach used by many tools.
 
 Figure \ref{fig:denseRDA} demonstrates the algorithm.
 
@@ -516,7 +516,7 @@ Figure \ref{fig:denseRDA} demonstrates the algorithm.
 \end{figure}
 #+END_LaTeX
 
-*** Performance penalty of the dense algorithm
+*** TODO Performance penalty of the dense algorithm
 \label{densePP} While the dense algorithm is correct, it performs
 excessive amount of work by copying information about reaching
 definitions to nodes of CFG where it is not necessary at all. Even in
@@ -525,12 +525,12 @@ definitions for all variables defined somewhere on a path from entry
 node to $n$. The dense algorithm certainly leaves some room for
 optimization.
 
-** Analyzing programs that use pointers
+** TODO Analyzing programs that use pointers
 One of the most important features of programming languages are
-pointers. They can be utilized, for example, to implement dynamic
-data structures, which are very widely used. However, pointers also
-add more ways the program can fail. For example, dereferencing a
-pointer with invalid value may cause the program to crash.
+pointers. They can be utilized to implement dynamic data structures,
+which are very widely used. However, pointers also add more ways the
+program can fail. For example, dereferencing a pointer with invalid
+value may cause the program to crash.
 
 As pointers make it possible to create variables that 
 # TODO change hold variables to something better
@@ -541,40 +541,46 @@ In order to compute reaching definitions for address-taken variables,
 reaching definitions analysis uses points-to information from pointer
 analysis.
 
-*** Pointer analysis
-Pointer analysis\nbsp{}\cite{ChalupaPTA} is, similarly to reaching definitions analysis, a
-part of static program analysis. It creates a set $\mathcal V$ of
-variables for each pointer $p$. If $p$ may point to some variable $v$,
-then $v \in \mathcal V$.
+*** TODO Pointer analysis
+Pointer analysis\nbsp{}\cite{ChalupaPTA} is, similarly to reaching
+definitions analysis, a part of static program analysis. It creates a
+set $\mathcal V$ of variables for each pointer $p$. If $p$ may point
+to some variable $v$, then $v \in \mathcal V$.
 
 Reaching definitions analysis uses these data from pointer analysis to
 recognize uses and definitions of variables. Accuracy of the reaching
 definitions analysis, therefore, depends on accuracy of the underlying
-pointer analysis.
+pointer analysis. Namely, if the pointer analysis performs an
+over-approximation, so will the reaching definitions analysis.
 
-*** Strong & weak definitions in programs with pointers
+*** TODO Strong & weak definitions in programs with pointers
 When processing an indirect(pointer-based) definition of a variable,
 it is important to distinguish whether the pointer \textit{must} or
 \textit{may} point to given variable. If the pointer \textit{must}
 point to the variable, it is considered a strong update. Otherwise, it
-is considered a weak update.
+is considered a weak update, as defined in\nbsp{}\ref{strongWeakUpdate}.
 
-Therefore, it is important to distinguish between \textit{strong} and
-\textit{weak} updates of variables.
-
-*** Unknown memory
+*** TODO Unknown memory
 Pointer analysis may return an empty points-to set or it might be
-unable to determine which variable the pointer points to. If this
-information is not known, the analysis needs to perform an
+unable to determine which variable the pointer points to. One of the
+cases where it could happen is, that the pointer is returned from an
+external function that is part of some library.
+
+If the information is not known, the pointer analysis needs to perform an
 over-approximation. That means, it has to assume that the pointer
 could point to any variable in the program.
 
-*** Field-sensitivity
+*** TODO Field-sensitivity
 While analyzing programs with arrays or aggregate data structures,
 distinguishing between definitions of individual elements of the data
 structure makes the analysis more accurate.
 
-*** Unknown offset
+Field-sensitivity of an RDA always depends on the field-sensitivity of
+the underlying pointer analysis. If the pointer analysis is
+field-insensitive, the RDA that uses its results has to be
+field-insensitive, too.
+
+*** TODO Unknown offset
 Pointer arithmetic is commonly involved when using aggregated data
 structures or arrays in the program. Arrays are commonly used with for
 loops to iterated through all elements of the array. The indexing
@@ -585,11 +591,9 @@ for loop unrolling is not involved with the particular for loop]
 
 ** TODO Demand-driven reaching definitions analysis
 In an attempt to avoid the performance penalty of the dense reaching
-definitions analysis (\ref{denseRDA}), several other algorithms have
-been introduced.
-
-This subchapter briefly introduces demand-driven reaching definitions
-analysis\nbsp{}\cite{SootDDRDA}.
+definitions analysis (discussed in \ref{denseRDA}), several other
+algorithms have been introduced. This subchapter briefly introduces
+demand-driven reaching definitions analysis\nbsp{}\cite{SootDDRDA}.
 
 Demand-driven reaching definitions analysis works by analyzing the CFG
 of a program backwards.
@@ -601,6 +605,12 @@ part of a slicer. Slicer is able to provide the analysis a list of
 variables it is interested in. Thanks to the lazy nature of the
 algorithm, the analysis can then operate faster by calculating
 reaching definitions only for relevant variables.
+** TODO Sparse dataflow analysis
+\cite{MadsenSDAPR}
+- SSA based
+- frontier edge
+- uses dominator tree
+- fixpoint computation
 ** TODO Algorithms based on static single assignment form
 \label{SSArd} Algorithms that transform a program into SSA form
 replace modified variables in assignments by new, artificially-created
@@ -618,14 +628,14 @@ computing SSA form. One of them has been introduced by
 Cytron et al\nbsp{}\cite{CytronSSA} and relies on dominance frontiers.  The
 second algorithm, invented by Braun et al\nbsp{}\cite{BraunSSA}, is simpler
 and has been experimentally proven to be more efficient\nbsp{}\cite{BraunSSA}.
-*** Cytron algorithm
+*** TODO Cytron algorithm
 
 Algorithm introduced by Cytron et al.\nbsp{}\cite{CytronSSA} uses dominance
 information to pre-calculate locations of \phi functions. In the later
 phase, variables are numbered using a simple stack of counters and \phi
 functions are filled with operands.
 
-*** Marker algorithm
+*** TODO Marker algorithm
 \label{marker}
 
 The marker algorithm\nbsp{}\cite{BraunSSA} has two phases: local value
@@ -659,14 +669,18 @@ variable in a block during local value numbering. If there is no last
 definition in a block, the lookup can continue to predecessors
 recursively.
 
-**** TODO 
-
-** Chosen approach to reaching definitions analysis
-
+** TODO Chosen approach to reaching definitions analysis
 In an attempt to avoid the performance penalty of the dense algorithm
 as described in \ref{densePP}, I have decided to implement a reaching
 definitions algorithm based on transformation to SSA form.
 # TODO why?? need to document other approaches aswell
+
+Thanks to the lazy nature of the Marker algorithm, I have concluded
+that it is the perfect candidate for a new reaching definitions
+algorithm. Another big advantage is, that it does not depend on having
+pre-calculated other data structures, such as dominator tree,
+dominance frontiers or others.
+
 This thesis presents two algorithms for transformation into SSA
 form. I have decided to use Marker algorithm. Marker algorithm is
 simpler, easily extensible and there are multiple stages of
