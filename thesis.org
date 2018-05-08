@@ -595,16 +595,32 @@ definitions analysis (discussed in \ref{denseRDA}), several other
 algorithms have been introduced. This subchapter briefly introduces
 demand-driven reaching definitions analysis\nbsp{}\cite{SootDDRDA}.
 
-Demand-driven reaching definitions analysis works by analyzing the CFG
-of a program backwards.
+The main idea of this approach is to answer the question ``can a
+definition $d$ of variable $v$ reach a program point $p$?''. This
+question is referred to as /query/ and it is represented by a triple
+$(d, p, v)$. After a query is generated, it is propagated backwards
+along nodes of the CFG. Each node may either answer the query or
+continue the propagation to its predecessors. If a node $x$ contains a
+definition of $v$, the query propagation stops. The answer is yes, if
+and only if $x = d$. If $x \ne d$, then node $x$ kills the
+definition $d$ before it can reach $p$ along the path.
 
-*** chunk of text 						   :noexport:
-It can work faster by only searching reaching definitions of specified
-variables. This brings an advantage in case the analysis is used as a
-part of a slicer. Slicer is able to provide the analysis a list of
-variables it is interested in. Thanks to the lazy nature of the
-algorithm, the analysis can then operate faster by calculating
-reaching definitions only for relevant variables.
+In case a program point $p$ has $n$ predecessors, it is sufficient
+that the reachability of $d$ is reported by at least one of them.
+
+With an inter-procedural CFG, this approach can be used with function
+summaries\nbsp\cite{ipFS1}\nbsp{}\cite{ipFS2}. The function summaries enable
+them to process functions once per variable in the program.
+
+# TODO explain slicing criterion somewhere?
+
+It is worth noting, that this approach has a special property that
+makes it suitable for a slicer: It is able to start from the slicing
+criterion and gradually find all definitions that affect the
+criterion. This way, it can avoid computing irrelevant information.
+
+# TODO nice equation with big \vee
+
 ** TODO Sparse dataflow analysis
 \cite{MadsenSDAPR}
 - SSA based
