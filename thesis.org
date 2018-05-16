@@ -2,18 +2,18 @@
 #+AUTHOR: Tomáš Jašek
 #+LATEX_CLASS:         fithesis
 #+OPTIONS:             todo:nil toc:nil
-#+LATEX_CLASS_OPTIONS: [nolot,nolof,color,oneside]
+#+LATEX_CLASS_OPTIONS: [nolot,nolof,color,twoside]
 #+LATEX_HEADER:        \input{setup.tex}
 * Introduction
 
-Nowadays, computer programs are used to control gadgets everywhere
-around us. Programs are used in wide variety of fields that impose
-diverse requirements on their reliability. For example, in medical
+Nowadays, computer programs control gadgets everywhere around
+us. Programs are used in wide variety of fields that impose diverse
+requirements on their reliability. For example, in medical
 applications, it is crucial that a program, which controls a piece of
 medical equipment does not misbehave or crash under any circumstances.
 
 On the other hand, programmers make mistakes very often. For example,
-a programmer could easily forget to close a curly brace or add a
+a programmer could easily forget to close a brace or add a
 semicolon at the end of a line. Mistakes similar to those result into
 syntax errors. Compiler is able to detect them while processing the
 program and sometimes offer a suitable replacement, too.
@@ -28,13 +28,13 @@ program to crash.
 
 Despite the availability of safe modern low-level programming
 languages, such as Rust, the C programming language is still very
-widespread. It is being used for critical purposes such as
-operating systems, embedded systems and device drivers. With its
-flexibility, it has some shortcomings that cause programmers to make
-mistakes often. One of the shortcomings is, that memory management is
-left to the programmer. A programmer could easily forget to free
-allocated memory, unintentionally free the same memory twice or forget
-to check the result of a memory allocation function.
+widespread. It is being used for critical purposes such as operating
+systems, embedded systems and device drivers. With its flexibility, it
+has some shortcomings that cause programmers to make mistakes
+often. One of the shortcomings is, that memory management is left to
+the programmer. A programmer could easily forget to free allocated
+memory, unintentionally free the same memory twice or forget to check
+the result of a memory allocation function.
 
 Several formal verification tools are able to detect such errors. One
 of them is \sbt{}. \sbt{} preprocesses the program in
@@ -46,12 +46,12 @@ program slicing based on the DG library\nbsp{}\cite{ChalupaDG} for this.
 
 One of the analyses used during slicing is reaching definitions
 analysis. It finds all definitions of a variable that modify it before
-the place where it is being used. Reaching definitions in programs
-without pointers is trivial and is done automatically by
+the place where it is being used. Computing reaching definitions in
+programs without pointers is trivial and is done automatically by
 LLVM\nbsp{}\cite{LLVM} -- the compiler infrastructure used by
-\sbt{}. However, reaching definitions for address-taken variables is
-more complex, as the analysis needs to deal with dynamic data
-structures, pointers that might point to multiple variables and
+\sbt{}. However, computing reaching definitions for address-taken
+variables is more complex, as the analysis needs to deal with dynamic
+data structures, pointers that might point to multiple variables and
 arrays.
 
 The aim of this thesis is to study modern techniques of computing
@@ -62,40 +62,31 @@ experimentally using a non-trivial set of benchmarks.
 This thesis is divided into individual chapters as follows: Chapter
 \ref{ch:ProgAnalysis} introduces the reader to program analysis in
 general. Key terms, such as program, control flow graph or static
-single assignment form are defined there.
-
-Chapter\nbsp{}\ref{ch:RDA} starts by defining what a reaching definition is,
-what is a reaching definitions analysis and discusses the simplest
-naive algorithm to compute reaching definitions in programs without
-pointers. Analyzing programs with pointers is discussed next. Then,
-the chapter continues by discussing various algorithms to compute
-reaching definitions.
-
-In chapter\nbsp{}\ref{ch:Symbiotic}, \sbt{} is introduced and its
-architecture is explained.
-
-The next chapter\nbsp{}\ref{ch:Implementation} discusses LLVM, the DG
-library and the chosen implementation approach based on Marker
-algorithm\nbsp{}\cite{BraunSSA} is discussed.
-
-Chapter\nbsp{}\ref{ch:Experiment} shows experimental comparison of the
-original implementation of reaching definitions analysis and the new
+single assignment form are defined there. Chapter\nbsp{}\ref{ch:RDA} starts
+by defining what a reaching definition is, what is a reaching
+definitions analysis and discusses the simplest naive algorithm to
+compute reaching definitions in programs without pointers. Analyzing
+programs with pointers is discussed next. Then, the chapter continues
+by discussing various algorithms to compute reaching definitions. In
+chapter\nbsp{}\ref{ch:Symbiotic}, \sbt{} is introduced and its architecture
+is explained. The next chapter\nbsp{}\ref{ch:Implementation} discusses LLVM,
+the DG library and the chosen implementation approach based on Marker
+algorithm\nbsp{}\cite{BraunSSA} is discussed. Chapter\nbsp{}\ref{ch:Experiment}
+shows experimental comparison of the original implementation of
+reaching definitions analysis and the new
 implementation. Implementations are compared in terms of time and
-accuracy. SV-COMP benchmarks set is used for the comparison.
-
-Chapter\nbsp{}\ref{ch:Summary} offers a summary of work done.
+accuracy. Benchmarks set from the SV-COMP competition is used for the
+comparison. Chapter\nbsp{}\ref{ch:Summary} offers a summary of work done.
 
 * Introduction to program analysis
 \label{ch:ProgAnalysis}
 
 Tools that find errors in programs use results of program analysis to
 decide whether or not there is an error in the program. There are two
-sub-techniques of program analysis:
-- dynamic
-- static
-
-An error-finding tool may use either approach or some combination
-of both. The following sub-chapter briefly introduces both techniques.
+sub-techniques of program analysis: dynamic analysis, static
+analysis. An error-finding tool may use either approach or some
+combination of both. The following sub-chapter briefly introduces both
+techniques.
 
 ** DONE Static and dynamic program analysis
 
@@ -118,36 +109,35 @@ analysis is able to uncover errors without knowing the input of the
 program. If an error is discovered, static analysis can synthesize an
 instance of input data for which the program enters the erroneous
 state. The main advantage is, that this technique can discover errors
-that are overlooked both by programmers and testers. Another advantage
-is, it does not require instance of input data, as it is not based on
-running the program. However, this technique can be very expensive,
-especially when the analyzed program is too big or complex.
+overlooked both by programmers and testers. Another advantage is, it
+does not require instance of input data, as it is not based on running
+the program. However, it can be very expensive, especially
+when the analyzed program is too big or complex.
 
 This thesis focuses on reaching definitions analysis, which is part of
 static analysis. The following sub-chapter continues with a more in-depth
 introduction to the static analysis.
 
-** TODO Key terms of static program analysis
+** DONE Key terms of static program analysis
 
-A /program/ is a sequence of some elementary instructions. This thesis
+A\nbsp{} /program/ is a sequence of some elementary instructions. This thesis
 focuses on analysing programs written in the C programming language.
-# TODO say that the term /program/ will refer to C program?
-# TODO is it necessary to define blocks? - yes
-Program's structure is reflected in its /Control flow
-graph/. Formally, /control flow graph/ (CFG\index{CFG}) of a program
-$\mathcal P$ is a graph $G = (V, E)$, where each instruction of
-$\mathcal P$ is represented by a vertex. If instruction $I_2$ /may/ be
-executed immediately after instruction $I_1$ in $\mathcal P$, then
-$(I_1, I_2) \in E$. Figure\nbsp{}\ref{fig:programCFG} shows a simple program in
-C language and its control flow graph.
+Program's structure is reflected in its /control flow
+graph/. Formally, /control flow graph/ (CFG for short\index{CFG}) of a
+program $\mathcal P$ is a graph $G = (V, E)$, where each instruction
+of $\mathcal P$ is represented by a vertex. If there exists a run of
+the program $\mathcal P$ where instruction $I_2$ is executed
+immediately after instruction $I_1$, then $(I_1, I_2) \in
+E$. Figure\nbsp{}\ref{fig:programCFG} shows a simple program in C language
+and its control flow graph.
 
 #+BEGIN_LaTeX
-  \begin{figure}[]
+  \begin{figure}
     \begin{minipage}[b]{0.5\textwidth}
       \begin{lstlisting}[language=C]
-        int i;
+        int $i$;
         scanf("%d", &i);
-        if (i % 2 == 0)
+        if ($i$ % 2 == 0)
             puts("even");
         else
             puts("odd");
@@ -157,9 +147,9 @@ C language and its control flow graph.
     \begin{minipage}[t]{0.5\textwidth}
       \begin{tikzpicture}
       \tikzstyle{arr} = [->,shorten <=1pt,>=stealth',semithick]
-        \node[draw, rectangle] (A) at (0, 0) {int i};
-        \node[draw, rectangle] (B) at (0, -1.2) {scanf("\%d", \&i)};
-        \node[draw, rectangle] (C) at (0, -2.4) {if i \% 2 == 0};
+        \node[draw, rectangle] (A) at (0, 0) {int $i$};
+        \node[draw, rectangle] (B) at (0, -1.2) {scanf("\%d", \&$i$)};
+        \node[draw, rectangle] (C) at (0, -2.4) {if $i$ \% 2 == 0};
         \node[draw, rectangle] (D) at (-1.5, -3.6) {puts("even")};
         \node[draw, rectangle] (E) at (1.5, -3.6) {puts("odd")};
         \node[draw, rectangle] (F) at (0, -4.8) {puts("exit")};
@@ -176,12 +166,12 @@ C language and its control flow graph.
   \end{figure}
 #+END_LaTeX
 
-A /variable/ is a fixed-size storage cell for value of some type.  A
+A\nbsp{} /variable/ is a fixed-size storage cell for value of some type. A\nbsp{}
 /definition/ of a variable is any instruction that can
-modify its value. A /use/ of a variable is any instruction
+modify its value. A\nbsp{} /use/ of a variable is any instruction
 that can read its value. 
 
-** TODO Static single assignment form
+** DONE Static single assignment form
 Programs may be transformed without changing their behaviour. One of
 transformations that do not change program's behaviour is
 transformation to Static Single Assignment form (or SSA for
@@ -198,20 +188,20 @@ SSA form.
     \begin{figure}[]
     \begin{minipage}[t]{0.5\textwidth}
       \begin{lstlisting}[language=C]
-        int i = 1;
-        int j = 1;
-        i = i + j;
-        j = j + i;
-        foo(i);
+        int $i$ = 1;
+        int $j$ = 1;
+        $i$ = $i$ + $j$;
+        $j$ = $j$ + $i$;
+        foo($i$, $j$);
       \end{lstlisting}
     \end{minipage}
     \begin{minipage}[t]{0.5\textwidth}
       \begin{lstlisting}[language=C]
-      int i_1 = 3;
-      int j_1 = 4;
-      i_2 = i_1 + j_1;
-      j_2 = j_1 + i_2;
-      foo(i_2);
+      int $i_1$ = 3;
+      int $j_1$ = 4;
+      $i_2$ = $i_1$ + $j_1$;
+      $j_2$ = $j_1$ + $i_2$;
+      foo($i_2$, $j_2$);
       \end{lstlisting}
     \end{minipage}
     \caption{Program and its SSA form}
@@ -220,33 +210,20 @@ SSA form.
 #+END_LaTeX
 
 Constructing the SSA form is a little more complex in case the CFG of
-a program contains loops. Consider program in Figure\nbsp{}\ref{fig:loop}.
+a program contains loops. Consider program in Figure\nbsp{}\ref{fig:loop1}.
 
 #+BEGIN_LaTeX
   \begin{figure}[h]
-    \begin{minipage}[b]{0.5\textwidth}
       \begin{lstlisting}[language=C]
-  int i = 0;
-  while (i < 10) {
-      printf("%d\n", i);
-      i++;
+  int $i$ = 0; // A
+  while ($i$ < 10) {
+      printf("%d\n", $i$); // B
+      $i$++; // C
   }
       \end{lstlisting}
-    \end{minipage}
-    \begin{minipage}[b]{0.5\textwidth}
-      \begin{lstlisting}[language=C]
-  int i_1 = 0;
-  int i_2;
-  int i_3;
 
-  while (i_2 = \phi(i_1, i_3), i_2 < 10) {
-      printf("%d\n", i_2);
-      i_3 = i_2 + 1;
-  }
-        \end{lstlisting}
-      \end{minipage}
-    \caption{Simple C program with loops and its SSA form}
-    \label{fig:loop}
+    \caption{Simple C program with loops}
+    \label{fig:loop1}
     \end{figure}
 #+END_LaTeX
 
@@ -256,7 +233,25 @@ at location =B= could be replaced by the assignment to =i= at location
 to the value of =i= at location =B=. It is, therefore, necessary to
 use some kind of combination of values from =A= and =C=. This is what
 a \phi function is for. $i_3 \gets \phi(i_1, i_2)$ denotes, that the value
-of $i_3$ could be either $i_1$ or $i_2$.
+of $i_3$ could be either $i_1$ or $i_2$. After transforming that program
+to SSA form, it looks as shown in figure\nbsp{}\ref{fig:loop2}.
+
+#+BEGIN_LaTeX
+  \begin{figure}[H]
+    \begin{lstlisting}[language=C]
+      int $i_1$ = 0;
+      int $i_2$;
+      int $i_3$;
+
+      while ($i_2 = \phi(i_1, i_3), i_2 < 10$) {
+        printf("%d\n", $i_2$);
+        $i_3$ = $i_2$ + 1;
+      }
+    \end{lstlisting}
+\caption{SSA form of the program from figure~\ref{fig:loop1}}
+\label{fig:loop2}
+  \end{figure}
+#+END_LaTeX
 
 * Reaching Definitions Analysis
 \label{ch:RDA}
@@ -272,17 +267,21 @@ instruction $I_1$ is an instruction $I_2$ such, that:
 + $I_1, I_2 \in \mathcal P$
 + $I_1$ is a use of variable $\mathcal V$
 + $I_2$ is a definition of variable $\mathcal V$
++ exists a path in CFG from $I_2$ to $I_1$
++ exists a run of $P$ where the value of $\mathcal V$ was not modified
+  by any instruction on path from $I_2$ to $I_1$ in the CFG
 
-Figure \ref{fig:programRD} shows program's CFG with reaching definitions.
+Figure \ref{fig:programRD} shows program's CFG with reaching
+definitions. The =scanf= function loads an integer from standard input
+and stores it to the memory address $\&i$. Therefore, it is a definition of $i$.
 
-# TODO figure: program and reaching definitions
 #+BEGIN_LaTeX
   \begin{figure}
     \begin{minipage}[b]{0.5\textwidth}
       \begin{lstlisting}[language=C]
-        int i;
-        scanf("%d", &i);
-        if (i % 2 == 0)
+        int $i$;
+        scanf("%d", &$i$);
+        if ($i$ % 2 == 0)
             puts("even");
         else
             puts("odd");
@@ -292,9 +291,10 @@ Figure \ref{fig:programRD} shows program's CFG with reaching definitions.
     \begin{minipage}[t]{0.5\textwidth}
       \begin{tikzpicture}
       \tikzstyle{arr} = [->,shorten <=1pt,>=stealth',semithick]
-        \node[draw, rectangle] (A) at (0, 0) {int i};
-        \node[draw, rectangle] (B) at (0, -1.2) {scanf("\%d", \&i)};
-        \node[draw, rectangle] (C) at (0, -2.4) {if i \% 2 == 0};
+\tikzstyle{rd} = [->,shorten <=1pt,>=stealth',dashed]
+        \node[draw, rectangle] (A) at (0, 0) {int $i$};
+        \node[draw, rectangle] (B) at (0, -1.2) {scanf("\%d", \&$i$)};
+        \node[draw, rectangle] (C) at (0, -2.4) {if $i$ \% 2 == 0};
         \node[draw, rectangle] (D) at (-1.5, -3.6) {puts("even")};
         \node[draw, rectangle] (E) at (1.5, -3.6) {puts("odd")};
         \node[draw, rectangle] (F) at (0, -4.8) {puts("exit")};
@@ -304,34 +304,36 @@ Figure \ref{fig:programRD} shows program's CFG with reaching definitions.
         \draw[arr] (C) -- (E);
         \draw[arr] (D) -- (F);
         \draw[arr] (E) -- (F);
+        \draw[rd]  (C.west) to [out=150,in=180] (B.west);
       \end{tikzpicture}
     \end{minipage}
-    \caption{Program in C language and its reaching definitions. Solid edges are part of CFG, dashed edges are reaching definitions.}
+    \caption{Program in C language, its CFG and reaching definition. Solid edges are part of CFG, dashed edge represents a reaching definition.}
     \label{fig:programRD}
   \end{figure}
 #+END_LaTeX
 
 ** TODO Strong and weak definitions, kill and gen sets
 \label{strongWeakUpdate}
-A reaching definitions analysis processes stores and loads in some
-way. There are two different views on the same problem.
-- pointer points at multiple variables
-  - definition of that pointer is weak definition
-  - kill set does not contain the pointer, gen does
+A reaching definitions analysis processes definitions and uses in some
+way.
 
 Each definition of a variable can be either /strong/ or /weak/. Strong
 definition over-writes the variable with a new value. When a strong
 definition is encountered, it invalidates all previous definitions of
 the variable. Weak definition, on the other hand, does not necessarily
-over-write the variable, so it does not invalidate previous definitions.
+over-write the variable, so it does not invalidate previous
+definitions. That means, for each use of a variable there might be
+multiple weak definitions, but at most one strong definition.
 
-That means, for each use of a variable there might be multiple weak
-definitions, but at most one strong definition.
+Literature commonly uses $KILL$ and $GEN$ sets to represent strong and
+weak definitions. For every vertex $x$ of control flow graph, $GEN(x)$
+is set of variables for which $x$ is a definition. $KILL(x) \subseteq
+GEN(x)$ is set of variables that are overwritten in this vertex.
 
 In programs that do not use pointers, all definitions of variables are
 strong.
 
-** TODO Properties of reaching definitions analyses
+** DONE Properties of reaching definitions analyses
 Reaching definitions analyses have some properties\nbsp{}\cite{rptRDA} that
 affect their accuracy. Less accurate analyses need to make some
 conservative assumptions about the program in order to be
@@ -354,15 +356,19 @@ more variables in case the instruction is inside of a nested loop.
 Differences between instance-wise analysis and statement-wise analysis
 will be demonstrated on a simple program in figure \ref{fig:instWise}.
 
-#+BEGIN_SRC c
-  int a = 0; // x
+#+BEGIN_LaTeX
+  \begin{figure}
+    \begin{lstlisting}[language=C]
+      int a = 0; // x
 
-  for(int i = 0; i < 5; ++i) {
-      int b = a + i; // y
-      a = b; // z
-  }
-#+END_SRC
-\label{fig:instWise}
+      for(int i = 0; i < 5; ++i) {
+        int b = a + i; // y
+        a = b; // z
+      }
+      \end{lstlisting}
+      \label{fig:instWise}
+      \end{figure}
+#+END_LaTeX
 
 Reaching definitions for =a= at location =y= should be =x= and
 =z=. However, there are multiple instances of instructions =y= and
@@ -460,19 +466,24 @@ speed.
 
 Consider the program in figure\nbsp{}\ref{fig:execPatterns}.
 
-#+BEGIN_SRC c
-  int foo(int a) {
-      int c = 0;
-      if (a < 0) {
+#+BEGIN_LaTeX
+  \begin{figure}
+    \begin{lstlisting}[language=C]
+      int foo(int a) {
+        int c = 0;
+        if (a < 0) {
           c = 1; // x
-      }
-      if (a >= 0) {
+        }
+        if (a >= 0) {
           c = 2; // y
+        }
+        return c; // z
       }
-      return c; // z
-  }
-#+END_SRC
-\label{fig:execPatterns}.
+    \end{lstlisting}
+    \label{fig:execPatterns}
+    \caption{Execution patterns}
+  \end{figure}
+#+END_LaTeX
 
 If an external analysis reports that there is no program execution
 where $a < 0$, the reaching definitions analysis could take this into
@@ -493,28 +504,35 @@ is a traditional approach used by many tools.
 Figure \ref{fig:denseRDA} demonstrates the algorithm.
 
 #+BEGIN_LaTeX
-\begin{figure}[H]
-  \begin{algorithm}
-  \SetAlgoLined
-  \KwData{Control Flow Graph as $V_{CFG}$ and $E_{CFG}$}
-  \KwResult{Reaching Definitions}
-  \While {not fixpoint} {
-    \For{$v \in V_{CFG}$ in DFS order} {
-      \For{$def(x) \in v.defs$} {
-        $v.rd(x) \gets v.rd(x) \cup \{ v \}$ \;
-      }
-      \For{$u \in v.predecessors$} {
-        \For{$def(x) \in u.defs$} {
-          $v.rd(x) \gets v.rd(x) \cup \{ u \}$ \;
+  \begin{figure}[H]
+    \begin{algorithm}[H]
+      \SetAlgoLined
+      \KwData{Control Flow Graph as $V_{CFG}$ and $E_{CFG}$}
+      \KwResult{Reaching Definitions}
+      
+      \For{$v \in V_{CFG}$} {
+        \For{$def(x) \in v.defs$} {
+          $v.rd(x) \gets v.rd(x) \cup \{ v \}$ \;
         }
       }
-    }
-  }
-  \end{algorithm}
-\caption{Dense reaching definitions analysis algorithm}
-\label{fig:denseRDA}
-\end{figure}
+      \While{not fixpoint} {
+        \For{$v \in V_{CFG}$ in DFS order} {
+          \For{$u \in v.predecessors$} {
+            \For{$def(x) \in u.defs$} {
+              $v.rd(x) \gets v.rd(x) \cup \{ u \}$ \;
+            }
+          }
+        }
+      }
+    \end{algorithm}
+    \caption{Dense reaching definitions analysis algorithm}
+    \label{fig:denseRDA}
+  \end{figure}
 #+END_LaTeX
+
+The algorithm starts by adding reaching definitions to CFG nodes that
+are definitions. Then, the reaching definitions are propagated
+throughout the entire CFG of the program until fixpoint is reached.
 
 *** TODO Performance penalty of the dense algorithm
 \label{densePP} While the dense algorithm is correct, it performs
@@ -522,8 +540,7 @@ excessive amount of work by copying information about reaching
 definitions to nodes of CFG where it is not necessary at all. Even in
 case the target CFG node $n$ uses some memory, it will get reaching
 definitions for all variables defined somewhere on a path from entry
-node to $n$. The dense algorithm certainly leaves some room for
-optimization.
+node to $n$.
 
 ** TODO Analyzing programs that use pointers
 One of the most important features of programming languages are
@@ -544,8 +561,9 @@ analysis.
 *** TODO Pointer analysis
 Pointer analysis\nbsp{}\cite{ChalupaPTA} is, similarly to reaching
 definitions analysis, a part of static program analysis. It creates a
-set $\mathcal V$ of variables for each pointer $p$. If $p$ may point
-to some variable $v$, then $v \in \mathcal V$.
+set $\mathcal V$ of variables for each pointer $p$. This set will be
+referred to as /points-to/ set. If $p$ may point to some variable $v$,
+then $v \in \mathcal V$.
 
 Reaching definitions analysis uses these data from pointer analysis to
 recognize uses and definitions of variables. Accuracy of the reaching
@@ -589,7 +607,7 @@ arithmetic. Pointer analysis is unable to determine the offset,
 because it changes with every iteration of the for loop.[fn::Assuming
 for loop unrolling is not involved with the particular for loop]
 
-** TODO Demand-driven reaching definitions analysis
+** DONE Demand-driven reaching definitions analysis
 In an attempt to avoid the performance penalty of the dense reaching
 definitions analysis (discussed in \ref{denseRDA}), several other
 algorithms have been introduced. This subchapter briefly introduces
@@ -618,8 +636,6 @@ It is worth noting, that this approach has a special property that
 makes it suitable for a slicer: It is able to start from the slicing
 criterion and gradually find all definitions that affect the
 criterion. This way, it can avoid computing irrelevant information.
-
-# TODO nice equation with big \vee
 
 ** TODO Sparse dataflow analysis
 \cite{MadsenSDAPR}
@@ -673,17 +689,14 @@ recursively searching the CFG for the latest definition in all
 predecessors of the current block. Once a definition is found, it is
 added as an operand to the \phi function.
 
-**** TODO Recursive function
 When looking up a definition of a variable from a predecessor block,
 the block does not have to be processed yet. If that is the case, the
 algorithm does not have any idea about which variables are defined in
 that block. This happens when the program's CFG is cyclic -
-e.g. recursive function is called or for loop is used.
-
-Because of that, the algorithm remembers the last definition of
-variable in a block during local value numbering. If there is no last
-definition in a block, the lookup can continue to predecessors
-recursively.
+e.g. recursive function is called or for loop is used. Because of
+that, the algorithm remembers the last definition of variable in a
+block during local value numbering. If there is no last definition in
+a block, the lookup can continue to predecessors recursively.
 
 ** TODO Chosen approach to reaching definitions analysis
 In an attempt to avoid the performance penalty of the dense algorithm
@@ -719,6 +732,7 @@ sensitivity. In order to use it, it is necessary to modify it.
 **** TODO Start lookup only in load instructions
 **** TODO Lookup only used variables
 **** TODO Strong updates stop the lookup
+
 * TODO Symbiotic
 \label{ch:Symbiotic}
 \sbt{} is a modular tool for formal verification of programs based
@@ -801,7 +815,7 @@ reflects structure of the program.
 Each instruction in the subgraph that defines some memory object has
 an associated points-to information from pointer analysis. Thanks to
 this, it is possible to tell which variables are strongly or weakly
-defined by a store function.
+defined by a store instruction.
 
 ** TODO Reaching definitions analysis implementation approach
 The new reaching definitions analysis is implemented in the DG
@@ -905,7 +919,7 @@ type the value is being loaded to.
 - why splitting blocks?
 - split basic block
 - inline the function
-*** TODO Treating unknown memory
+*** DONE Treating unknown memory
 Sometimes, pointer analysis was unable to tell where a pointer may
 point, so the analysis has to make some conservative assumptions about
 the program in order to be correct. In this case, the analysis assumes
@@ -923,6 +937,7 @@ turn into weak definition of all variables in the program or use of
 all variables in the program, respectively. Doing this removes some
 complex handling of unknown pointers from the next phase of the analysis.
 *** TODO Field-sensitivity
+\label{chap:intervals}
 The Marker algorithm itself does not consider aggregate data
 structures. In order to support analyzing them, it needs to be
 modified a little.
@@ -961,10 +976,9 @@ result key intervals. Rather, it searches the whole IntervalMap and
 returns all values which are saved under intervals that overlap with
 the specified interval.
 
-*** TODO Weak updates
-- clear the data structures when strong update is encountered
-  - interval magic
+=killOverlapping=
 
+*** TODO Weak updates
 The Marker algorithm maintains two main data structures for processing
 the strong updates: =last_def=, =current_def=. To incorporate weak
 updates, they have been duplicated with names =last_weak_def= and
@@ -973,7 +987,8 @@ updates, they have been duplicated with names =last_weak_def= and
 =last_weak_def= is used during local value numbering to remember the
 last weak definition in a block. When a strong definition is
 encountered, overlapping weak definitions are either killed or have
-their definition intervals shrank.
+their definition intervals shrank. The =killOverlapping= function of
+=IntervalMap= introduced in\nbsp{}\ref{chap:intervals} is used for that.
 
 When a strong definition is encountered during global variable
 numbering, current weak definitions that overlap with the strong
@@ -987,6 +1002,10 @@ Encountering a weak update involves simply adding it to =current_def=
 in global value numbering, or =last_def= in local value numbering.
 
 *** TODO Treating unknown offset
+The offset of a pointer can sometimes be unknown. This usually happens
+when accessing an array using an indexing variable while its value is
+unknown. 
+
 - stretch to max interval
 - weak update
 
@@ -1004,7 +1023,10 @@ in global value numbering, or =last_def= in local value numbering.
 ** TODO Time
 ** TODO Memory Used
 ** TODO Accuracy
-- the new analysis is more accurate
+Thanks to the ``interval framework'' introduced
+in\nbsp{}\ref{chap:intervals}, the new implementation of semi-sparse
+analysis is more accurate than the original implementation. Consider this program:
+
   #+BEGIN_SRC c
     int a[] = {0, 1, 2, 3}; // A
     a[0] = 5; // B
