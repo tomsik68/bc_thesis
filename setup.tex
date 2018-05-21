@@ -8,9 +8,10 @@
 \usepackage{listings}
 \lstset{
         mathescape,
-        numbers=left
+%        numbers=left
 }
 \usepackage{enumitem}
+\setitemize{noitemsep,topsep=0pt,parsep=0pt,partopsep=0pt}
 %\usepackage[xindy]{imakeidx}
 \usepackage[backend=biber,
             style=ieee,
@@ -53,3 +54,6 @@ I would also like to say thank you to my family, friends and everyone who
 
 \input{algorithm_setup.tex}
 \addtocontents{toc}{\setcounter{tocdepth}{1}}
+\newcommand\encircle[1]{%
+  \tikz[baseline=(X.base)] 
+    \node (X) [draw, shape=circle, inner sep=0] {\strut #1};}
