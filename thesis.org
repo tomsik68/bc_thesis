@@ -12,6 +12,7 @@ requirements on their reliability. For example, in medical
 applications it is crucial that a program which controls a piece of
 medical equipment does not misbehave or crash under any circumstances.
 
+# TODO rework start
 On the other hand, programmers make mistakes very often. For example,
 a programmer could easily forget to close a brace or add a semicolon
 at the end of a line. Mistakes similar to those result into syntax
@@ -33,6 +34,7 @@ often. One of the shortcomings is, that memory management is left to
 the programmer. A programmer could easily forget to free allocated
 memory, unintentionally free the same memory twice or forget to check
 the result of a memory allocation function, which may fail.
+# TODO rework end
 
 Several formal verification tools are able to detect such errors. One
 of them is \sbt{}. \sbt{} firstly inserts error checks into the
@@ -82,39 +84,32 @@ future work and summarizes the thesis.
 
 Tools that find errors in programs use results of program analysis to
 decide whether or not there is an error in the program. There are two
-kinds of program analysis: dynamic analysis and static analysis. An
-error-finding tool may use either approach or some combination of
+kinds of program analysis: dynamic analysis and static analysis. A
+verification tool may use either approach or some combination of
 both. The following sub-chapter briefly introduces both.
 
 ** DONE Static and dynamic program analysis
 
-*Dynamic analysis* is capable of detecting an erroneous state in the
-program while it is running. For example, one could replace C =malloc=
-and =free= functions by functions that track the allocations. This is
-how valgrind[fn::http://valgrind.org/] works. Another familiar example
-of a dynamic analysis is unit testing. During unit testing, the
-program(or its part) is started with a user-specified input and after
-finishing, its output is checked. If a dynamic analysis uncovers an
-error, there is definitely an error in the program. The main
-disadvantage is that if the analysis did not uncover any error, there
-could still be an input that produces an error.
+*Dynamic analysis* is based on watching behaviour of a program while
+the program is running. For example, one could replace C =malloc= and
+=free= functions by functions that track the allocations. This is how
+valgrind[fn::http://valgrind.org/] works. Another familiar example of
+a dynamic analysis is unit testing. During unit testing, the program
+(or its part) is started with a user-specified input and after
+finishing, its output is checked.
 
-*Static analysis* derives program properties from some program's
-representation without directly executing it. It could be the source
-code, compiled machine code or some kind of intermediate
+\noindent *Static analysis* derives program properties from some
+program's representation without directly executing it. It could be
+the source code, compiled machine code or some kind of intermediate
 representation (such as Java bytecode or LLVM bitcode). Static
-analysis is able to uncover errors without knowing the input of the
-program. If an error is discovered, static analysis can synthesize an
-instance of input data for which the program enters the erroneous
-state. The main advantage is, that this technique can discover errors
-overlooked both by programmers and testers. Another advantage is, it
-does not require instance of input data, as it is not based on running
-the program. However, it can be very expensive, especially
-when the analyzed program is too big or complex.
+analysis often has problems balancing between performance and
+accuracy. Decreasing accuracy of the analysis yields incorrect
+results, while increasing accuracy also increases the complexity of
+the analysis.
 
 This thesis focuses on reaching definitions analysis, which is a
-static analysis. The following sub-chapter continues with a more in-depth
-introduction to the static analysis.
+static analysis. The following sub-chapter continues with a more
+in-depth introduction to the static analysis.
 
 ** DONE Key terms of static program analysis
 \label{ch:KTPA}
@@ -172,38 +167,42 @@ Figure\nbsp{}\ref{fig:programCFG} shows a simple program in C
 language and its control flow graph.
 
 
-\label{domTree} Algorithms that process CFG of a program make use of
-some relations defined on nodes of the CFG. Dominance\nbsp{}\cite{TarjanDom}
-is one of the most important relations for algorithms presented in
-this thesis, so let us define it. Let $(V, E)$ be a CFG. $x \in V$
-/dominates/ $y \in V$ if and only if $x \in V$ is on every path from the
-entry node to $y$. If $x$ dominates $y$ and $x \ne y$, then $x$ is a
-/strict dominator/ of $y$. The closest strict dominator of $y$ is the
-/immediate dominator/ of $y$ on any path from entry node to $y$ in
-CFG. Dominator tree is a graph $(V, E_d)$, where vertices are from CFG
-and $(x, y) \in E_d$ if and only if $x$ is immediate dominator of $y$.
-
 Executable programs that are not libraries have an entry point. In C
 programs, this is a function called =main=. The first CFG node of the
-main function is referred to as /entry node/.
+main function is referred to as /entry node/. Every CFG has exactly
+one entry node from which all other CFG nodes are reachable.
+
+\label{domTree} Algorithms that process CFG of a program may make use
+of some relations defined on nodes of the
+CFG. Dominance\nbsp{}\cite{TarjanDom} is one of the most important relations
+for algorithms presented in this thesis. Let $(V, E)$ be a CFG. $x \in
+V$ /dominates/ $y \in V$ if and only if $x \in V$ is on every path from
+the entry node to $y$. If $x$ dominates $y$ and $x \ne y$, then $x$ is a
+/strict dominator/ of $y$. The closest strict dominator of $y$ is the
+/immediate dominator/ of $y$ on any path from entry node to $y$ in
+CFG. /Dominator tree/ is a graph $(V, E_d)$, where vertices are from
+CFG and $(x, y) \in E_d$ if and only if $x$ is immediate dominator of
+$y$.  If $x \in V$, then /dominance frontier/ $DF(X)$ is set of all $y \in
+V$ such that $x$ dominates a predecessor of $y$, but $x$ does not
+strictly dominate $y$.
 
 Programs are commonly divided into /basic blocks/. A basic block is a
-maximum sequence of elementary instruction that does not contain a
-jump instruction. Every instruction of the program is part of some
-basic block.
+maximum sequence of elementary instructions that does not contain a
+jump instruction. Every instruction of the program is part of exactly
+one basic block.
 
 A\nbsp{} /variable/ is a fixed-size storage cell in memory. A\nbsp{}
 /definition/ of a variable is any instruction that 
 modifies its value. A\nbsp{} /use/ of a variable is any instruction
 that reads its value.
 
-** DONE Static single assignment form
+** TODO Static single assignment form
 Programs may be transformed without changing their behaviour. One of
 transformations that do not change program's behaviour is
 transformation to Static Single Assignment form (or SSA for
-short)\nbsp{}\cite{CytronSSA}. The transformation itself yields some useful data about the
-program and the SSA form is particularly useful for compilers and code
-analyzers.
+short)\nbsp{}\cite{CytronSSA}. The transformation itself yields some useful
+data about the program and the SSA form is particularly useful for
+compilers and code analyzers.
 
 #+BEGIN_LaTeX
     \begin{figure}[]
@@ -229,11 +228,11 @@ analyzers.
     \label{fig:programSSA}
     \end{figure}
 #+END_LaTeX
-
+# TODO make sure the definition is right this time
 A program $\mathcal P$ is in /Static Single Assignment form/ if, and
-only if for each variable in $\mathcal P$, there is exactly one
-definition\nbsp{}\cite{RosenGVNRC}. Figure\nbsp{}\ref{fig:programSSA} shows a simple program and its
-SSA form.
+only if the program contains exactly one assignment to each
+variable\nbsp{}\cite{RosenGVNRC}. Figure\nbsp{}\ref{fig:programSSA} shows a simple
+program and its SSA form.
 
 #+BEGIN_LaTeX
   \begin{figure}
@@ -251,16 +250,19 @@ SSA form.
 #+END_LaTeX
 
 Constructing SSA form is a little more interesting in case the CFG of
-a program contains loops. Consider program in Figure\nbsp{}\ref{fig:loop1}.
+a program contains cycles. Consider program in Figure\nbsp{}\ref{fig:loop1}.
 
-\noindent While constructing SSA form of this program, the use of $i$ variable
-at location \encircle{2} could be replaced by the assignment to $i$ at location
-\encircle{1} or \encircle{3}. The problem is, that both of these statements contribute
-to the value of $i$ at location \encircle{2}. It is, therefore, necessary to
-use some kind of combination of values from \encircle{1} and \encircle{3}. This is what
-a \phi function is for. $i_3 = \phi(i_1, i_2)$ denotes, that the value
-of $i_3$ could be either $i_1$ or $i_2$. After transforming the program from figure\nbsp{}\ref{fig:loop1}
-to SSA form, it looks as shown in figure\nbsp{}\ref{fig:loop2}.
+\noindent While constructing SSA form of this program, the use of $i$
+variable at location \encircle{2} could take value of the right side
+of the assignment to $i$ at location \encircle{1} or \encircle{3}. The
+problem is, that both of these statements contribute to the value of
+$i$ at location \encircle{2} and there must be exactly one assignment
+to $i$ in SSA form. It is, therefore, necessary to use some kind of
+combination of values from \encircle{1} and \encircle{3}. This is what
+a \phi function is for. $i_3 = \phi(i_1, i_2)$ denotes, that the value of $i_3$
+could be either $i_1$ or $i_2$. After transforming the program from
+figure\nbsp{}\ref{fig:loop1} to SSA form, it looks as shown in
+figure\nbsp{}\ref{fig:loop2}.
 
 #+BEGIN_LaTeX
   \begin{figure}[h]
@@ -279,10 +281,10 @@ to SSA form, it looks as shown in figure\nbsp{}\ref{fig:loop2}.
   \end{figure}
 #+END_LaTeX
 
-* TODO Reaching definitions analysis
+* DONE Reaching definitions analysis
 \label{ch:RDA}
 This chapter starts by explaining what a reaching definition is and
-demonstrating the simplest naive algorithm for computing reaching
+demonstrates the simplest naive algorithm for computing reaching
 definitions. It continues by discussing properties of reaching
 definitions analyses and introduces various algorithms to compute
 reaching definitions.
@@ -293,12 +295,16 @@ instruction $I_2$ such, that:
 + $I_1, I_2$ are part of $\mathcal P$
 + $I_1$ is a use of variable $\mathcal V$
 + $I_2$ is a definition of variable $\mathcal V$
-+ there exists a run of $\mathcal P$ where the value of $\mathcal V$ was not
++ there exists a run of $\mathcal P$ where $I_1$ is executed after $I_2$
+  and there is no other instruction $I_3 \neq I_2$ that modifies
+  variable $\mathcal V$ and is executed after $I_2$ and before $I_1$
+
+was not
   overwritten by any instruction on path from $I_2$ to $I_1$ in the CFG
 
 #+BEGIN_LaTeX
   \begin{figure}[h]
-    \begin{minipage}[b]{0.5\textwidth}
+    \begin{subfigure}{0.5\textwidth}
       \begin{lstlisting}[language=C]
         int i = 5;
         int j = 4;
@@ -310,37 +316,38 @@ instruction $I_2$ such, that:
         }
         printf("%d", j);
       \end{lstlisting}
-    \end{minipage}
-    \begin{minipage}[t]{0.5\textwidth}
+    \end{subfigure}
+    \begin{subfigure}{0.5\textwidth}
       \begin{tikzpicture}
 
         \tikzstyle{arr} = [->,shorten <=1pt,>=stealth',semithick];
         \tikzstyle{rd} = [->,shorten <=1pt,>=stealth',dashed];
 
-        \node[draw, rectangle] (declI) at (0, 0) {int $i = 5$};
-        \node[draw, rectangle] (declJ) at (0, -1.2) {int $j = 4$};
+        \node[draw, rectangle] (declI)               { int $i = 5$};
+        \node[draw, rectangle] (declJ) [below of=declI] { int $j = 4$};
 
-        \node[draw, rectangle] (C) at (0, -2.4) {if $i$ == 0};
-        \node[draw, rectangle] (D) at (-2.0, -3.6) { j = 1 };
-        \node[draw, rectangle] (E) at (1.5, -3.6) { if $i == 2$ };
-        \node[draw, rectangle] (F) at (0, -4.8) { $j = 3$ };
-        \node[draw, rectangle] (G) at (-1.0, -6) { printf("\%d", $j$ ) };
+        \node[draw, rectangle] (C) [below of=declJ] { if $i$ == 0};
+        \node[draw, rectangle] (E) [below of=C] { if $i == 2$ };
+        \node[draw, rectangle] (D) [left of=E] { j = 1 };
+        \node[draw, rectangle] (F) [below of=E, right of=E] { $j = 3$ };
+        \node[draw, rectangle] (G) [below of=F, below of=E] { printf("\%d", $j$ ) };
 
         \draw [arr] (declI) -- (declJ);
         \draw [arr] (declJ) -- (C);
-        \draw [arr] (C) -- (D);
+        \draw [arr] (C.west) -- (D.north);
         \draw [arr] (C) -- (E);
         \draw [arr] (D) -- (G);
-\draw [arr] (E) -- (F);
+        \draw [arr] (E) -- (F);
         \draw [arr] (F) -- (G);
-        \draw [arr] (E.south) to [out=-90,in=0] (G.east);
+        \draw [arr] (E.east) to [out=0,in=0] (G.east);
         \draw [rd]  (C.west) to [out=150,in=180] (declI.west);
         \draw [rd]  (E.east) to [out=0,in=0] (declI.east);
-        \draw [rd] (G.north) to [out=90,in=0] (D.east);
+        \draw [rd] (G.west) to [out=180,in=-90] (D.south);
         \draw [rd] (G.east) to [out=0,in=0] (F.east);
         \draw [rd] (G.east) to [out=0,in=0] (declJ.east);
       \end{tikzpicture}
-    \end{minipage}
+
+    \end{subfigure}
     \caption{Program in C language, its CFG and reaching definitions. Solid edges are part of CFG, dashed edges represent reaching definitions.}
     \label{fig:programRD}
   \end{figure}
@@ -351,40 +358,31 @@ definitions.
 
 Reaching definitions are calculated by a reaching definitions analysis
 (RDA for short).
-
+*
 ** TODO Dense reaching definitions analysis
-# TODO rework
 \label{denseRDA} One of the ways to compute reaching definitions is
 to ``follow'' the control flow graph of the program while remembering
 the last definition for each variable for each of its vertices. This
 is a traditional approach used by many tools.
 
-Literature commonly uses $KILL$ and $GEN$ sets to describe how the RDA
-operates. Let $(V, E)$ be a CFG. For every $x \in V$, $GEN(x)$ is set of
-variables for which $x$ is a definition. $KILL(x) \subseteq GEN(x)$ is
-set of variables that are overwritten in this vertex.
-
-Figure \ref{fig:denseRDA} demonstrates the algorithm.
+In order to translate the semantics of instructions into something an
+RDA can understand, $KILL$ and $GEN$ sets are commonly used. Let $(V,
+E)$ be a CFG. For every $x \in V$, $GEN_x$ is set of variables for which
+$x$ is a definition. $KILL_x \subseteq GEN_x$ is set of variables that
+are overwritten in this vertex. The $KILL$ and $GEN$ sets do *not*
+change during the process of the analysis.
 
 #+BEGIN_LaTeX
   \begin{figure}[H]
     \begin{algorithm}[H]
       \SetAlgoVLined
-      \KwData{Control Flow Graph as $(V, E)$, for every $v \in V$, $v.defs$ is a set of variables defined in $v$}
-      \KwResult{for every $v \in V$ and every variable $x$, $v.rd(x)$ is a set of reaching definitions for variable $x$ in $v$}
+      \KwData{Control Flow Graph as $(V, E)$, for every $v \in V$, $GEN_v$ and $KILL_v$ are known based on instruction semantics, $pred(v)$ is a set of predecessors of $v$ in the CFG}
+      \KwResult{for every $v \in V$, $IN_v$ and $OUT_v$ are computed}
       
-      \For{$v \in V$} {
-        \For{$def(x) \in v.defs$} {
-          $v.rd(x) \gets v.rd(x) \cup \{ v \}$ \;
-        }
-      }
       \While{\text{not fixpoint}} {
-        \For{$v \in V$ in DFS order} {
-          \For{$(u, v) \in E$} {
-            \For{$def(x) \in u.defs$} {
-              $v.rd(x) \gets v.rd(x) \cup \{ u \}$ \;
-            }
-          }
+        \For{$v \in V$} {
+          $IN_v \gets \bigcup_{u \in pred(v)} OUT_u$ \;
+          $OUT_v \gets GEN_v \cup (IN_v \setminus KILL_v)$ \;
         }
       }
     \end{algorithm}
@@ -393,10 +391,12 @@ Figure \ref{fig:denseRDA} demonstrates the algorithm.
   \end{figure}
 #+END_LaTeX
 
-The algorithm starts by adding reaching definitions to CFG nodes that
-are definitions. Then, the reaching definitions are propagated
-throughout the entire CFG of the program until fixpoint is
-reached.
+Classical dataflow analysis\nbsp{}\cite{TonellaDenseRDA} maintains two working sets for each $v \in
+V$: $IN_v$ and $OUT_v$. $IN_v$ and $OUT_v$ contain incoming resp. outgoing
+reaching definitions. Both of them are mappings of variables to CFG
+nodes. Figure \ref{fig:denseRDA} demonstrates the algorithm.
+
+# TODO priklad
 
 ** DONE Properties of reaching definitions analyses
 It is impossible for reaching definitions analyses to find precise
@@ -526,12 +526,12 @@ $c$ at \encircle{3}.
 In this case, an analysis that does not recognize execution patterns
 yields an over-approximation, which is not a problem.
 
-*** TODO Using strong and weak definitions
-# TODO polish
-Accuracy of the analysis affects performance. Because of that, it is
-desirable to trade some accuracy for better performance in some
-cases. In order not to sacrifice too much accuracy, analyses
-distinguish between strong and weak definitions.
+*** DONE Using strong and weak definitions
+The mentioned properties increase accuracy of an RDA. Accuracy of the
+analysis comes at the cost of performance. Because of that, it is
+desirable to trade accuracy for better performance in some cases. In
+order not to sacrifice too much accuracy, analyses distinguish between
+/strong/ and /weak/ definitions.
 
 A\nbsp{}strong definition over-writes the variable with a new value. When
 a\nbsp{}strong definition is encountered, it invalidates all previous
@@ -539,7 +539,7 @@ definitions of the variable. Weak definition, on the other hand, does
 not necessarily over-write the variable, so it does not invalidate
 previous definitions.
 
-** TODO Analyzing programs that use pointers
+** DONE Analyzing programs that use pointers
 One of the most important features of programming languages are
 pointers. They can be utilized to implement dynamic data structures,
 which are very widely used. As pointers make it possible to create
@@ -562,36 +562,65 @@ underlying pointer analysis. Namely, when the pointer analysis
 performs an over-approximation, so will the reaching definitions
 analysis.
 
-*** TODO Weak definitions in programs with pointers
+*** DONE Weak definitions in programs with pointers
 \label{strongWeakUpdate} Reaching definitions analyses that process
 programs with pointers can take advantage of weak definitions to solve
-some challenges connected with processing pointers.
+some challenges associated with processing pointers.
 
 The first case is, that a pointer could point to multiple
-variables. In this case, every definition of such pointer can be
-considered as a weak definition.
+variables. In this case, every definition of such pointer must be
+considered as a weak definition, because it could over-write either of
+the memory objects while leaving the other intact.
 
-# TODO
-- pointer might point to multiple variables
-- memory allocated on heap
+#+BEGIN_LaTeX
+  \begin{figure}
+    \begin{lstlisting}[language=C]
+      typedef struct {
+        int $n$;
+      } my_t;
+      
+      my_t *foo(int $a$) {
+        my_t *$mem$ = (my_t *)malloc(sizeof(my_t));
+        $mem$->$n$ = $a$;
+      }
+      
+      my_t *$x$ = foo(1);  /\encircle{1}/
+      my_t *$y$ = foo(2);  /\encircle{2}/
+      
+      assert($x$->$n$ == 1);
+      assert($y$->$n$ == 2); 
+    \end{lstlisting}
+    \label{fig:heapWeak}
+    \caption{Demonstration of weak definitions of heap-allocated memory. Source: DG library documentation}
+  \end{figure}
+#+END_LaTeX
 
-** DONE Demand-driven reaching definitions analysis
+Another issue to be addressed is heap-allocated memory. Consider the
+program in figure\nbsp{}\ref{fig:heapWeak}. If \encircle{2} is labeled as
+a\nbsp{}strong update, definition at \encircle{1} would be over-written be
+the definition at \encircle{2}, because they were allocated by the
+same statement.
+
 Apart from the dense algorithm, several other algorithms to compute
 reaching definitions have been introduced. Other algorithms are
 generally based on traversing the CFG of a program and processing only
 definitions and uses of variables. They also attempt to eliminate need
-to use fixpoint in the computation. This subchapter briefly introduces
-demand-driven reaching definitions analysis\nbsp{}\cite{SootDDRDA}.
+to use fixpoint in the computation. The following section briefly
+introduces demand-driven reaching definitions
+analysis.
 
-The main idea of this approach is to answer the question ``can a
-definition $d$ of variable $v$ reach a program point $p$?''. This
-question is referred to as /query/ and it is represented by a triple
-$(d, p, v)$. After a query is generated, it is propagated backwards
-along nodes of the CFG. Each node may either answer the query or
-continue the propagation to its predecessors. If a node $x$ contains a
-definition of $v$, the query propagation stops. The answer is yes, if
-and only if $x = d$. If $x \ne d$, then node $x$ kills the definition
-$d$ before it can reach $p$ along the path.
+** DONE Demand-driven reaching definitions analysis
+
+The main idea of demand-driven approach\nbsp{}\cite{SootDDRDA} is to answer
+the question ``can a definition $d$ of variable $v$ reach a program
+point $p$?''. This question is referred to as /query/ and it is
+represented by a triple $(d, p, v)$. After a query is generated, it is
+propagated backwards along nodes of the CFG. Each node may either
+answer the query or continue the propagation to its predecessors. If a
+node $x$ contains a definition of $v$, the query propagation
+stops. The answer is yes, if and only if $x = d$. If $x \ne d$, then
+node $x$ kills the definition $d$ before it can reach $p$ along the
+path.
 
 In case a program point $p$ has $n$ predecessors, it is sufficient
 that the reachability of $d$ is reported by at least one of them.
@@ -601,8 +630,7 @@ makes it suitable for a slicer: It is able to start from the slicing
 criterion and gradually find all definitions that affect the
 criterion. This way, it can avoid computing irrelevant information.
 
-** TODO Sparse dataflow analysis
-# TODO polish, maybe extend
+** DONE Sparse dataflow analysis
 Another approach to computing reaching definitions was introduced by
 Madsen and M\o{}ller \cite{MadsenSDAPR}. This approach requires
 pre-computing dominator tree\nbsp{}\cite{CytronSSA} for nodes of the
@@ -626,15 +654,13 @@ program is produced.
 The input program is processed by the algorithm until fixpoint -- there is no new use
 discovered.
 
-** TODO Algorithms based on static single assignment form
+** DONE Algorithms based on static single assignment form
 \label{SSArd} Algorithms that transform a program into SSA form
 replace modified variables in assignments by new, artificially-created
 variables representing a new ``version'' of the variable. They also
 replace variables in uses by the most recent definition -- reaching
-definition. In a program that is already transformed into SSA form, it
-is possible
-
-# TODO program, SSA form, reaching definitions
+definition. Reaching definitions are a side-effect of transformation
+to SSA form.
 
 For the purpose of this thesis, we have studied two algorithms for
 computing SSA form. One of them has been introduced by Cytron et
@@ -642,23 +668,31 @@ al\nbsp{}\cite{CytronSSA}.  The second algorithm, invented by Braun et
 al\nbsp{}\cite{BraunSSA}, is simpler and has been experimentally proven to
 be as fast as the Cytron et al. algorithm\nbsp{}\cite{BraunSSA}.
 
-*** TODO Cytron et al algorithm
+*** DONE Cytron et al algorithm
 
 Algorithm introduced by Cytron et al.\nbsp{}\cite{CytronSSA} uses dominance
-information to pre-calculate locations of \phi nodes. In the later
-phase, variables are numbered using a simple stack of counters and \phi
-nodes are filled with operands.
+information to find locations of \phi nodes, so it requires the dominator
+tree of nodes in the CFG to be computed already. It also requires to
+have a set $\mathcal A(\mathcal V)$ for every variable $\mathcal V$,
+that contains all definitions of $\mathcal V$.
 
-This approach was proven to produce minimal SSA form.
+The algorithm starts by computing dominance frontiers from a dominator
+tree. Dominance frontiers are then used to compute where in the
+program should \phi nodes be placed. \phi node positions are computed for
+each variable individually. After positions of \phi nodes are computed,
+the CFG is traversed once again and value numbering takes place for
+all variables at once.
+
+This approach is proven to produce minimal SSA form\nbsp{}\cite{CytronSSA}.
 
 *** TODO Braun et al algorithm
 \label{marker}
 
 Algorithm by Braun et al.\nbsp{}\cite{BraunSSA} will be used as a base for
 implementation of the new analysis, so it is discussed more in depth.
-It operates in two phases: local value numbering and global value
-numbering. Both of these phases process basic blocks of the program in
-the execution order.
+The algorithm operates in two phases: /local value numbering/ and /global
+value numbering/. Both of these phases process basic blocks of the
+program in the execution order.
 
 During *local value numbering*, it computes SSA form of every basic
 block of the program. For every basic block, it iterates through all
@@ -690,11 +724,13 @@ Along with the algorithm, Braun et al. present a way to reduce the
 number of added \phi nodes, which allows their algorithm to produce
 minimal SSA form.
 
+# TODO pseudokod
+
 #+BEGIN_LaTeX
   \begin{figure}
     \begin{algorithm}[H]
       \SetAlgoVLined
-      \Function{\WriteVariable}{}
+      
     \end{algorithm}
   \end{figure}
 #+END_LaTeX
@@ -708,18 +744,18 @@ well-known techniques:
 
 1. *Instrumentation* is responsible for inserting various error checks
    into the program. For example, when checking memory access errors,
-   instrumentation is responsible for adding the allocated memory
-   along with allocation size into a global data structure. When
+   instrumentation is responsible for registering the allocated memory
+   along with allocation size to a global data structure. When
    dereferencing a pointer, instrumentation inserts a check to verify
    whether this pointer is inside allocated bounds or not. An
    assertion that crashes the program if a dereference is out of
    bounds of allocated memory is inserted, too.
-2. *Slicing*\nbsp{}\cite{ChalupaDG} is a technique that reduces the size of
-   the program by removing parts that do not influence its behaviour
-   with respect to a specified /slicing criterion/. Slicing criterion is an =assert=
-   instruction. The slicer computes which instructions the slicing
-   criterion is dependent on. For that, it uses results of reaching
-   definitions analysis.
+2. *Program Slicing*\nbsp{}\cite{ChalupaDG} is a technique that reduces the
+   size of the program by removing parts that do not influence its
+   behaviour with respect to a specified /slicing criterion/. Slicing
+   criterion consists of several =assert= calls. The slicer computes
+   which instructions the slicing criterion is dependent on. For that,
+   it uses results of reaching definitions analysis.
 3. *Symbolic execution* is the last step. It is a technique that
    decides whether the program could violate a condition of some
    assertion in the program. Rather than requiring user input, it uses
@@ -731,129 +767,9 @@ well-known techniques:
 
 * TODO Implementation
 \label{ch:Implementation} This chapter starts by introduction of the
-implemented algorithm, then describes the DG library and the LLVM
-infrastructure. Finally, an in-depth discussion of the new reaching
-definitions analysis implementation.
-
-** DONE Implemented reaching definitions analysis
-
-The implemented reaching definitions analysis is based on the Marker
-algorithm\nbsp{}\cite{BraunSSA}. As described in\nbsp{}\ref{marker}, the algorithm
-transforms a program into SSA form, which is not exactly what we
-need. We will start by adapting the algorithm to compute reaching
-definitions.
-
-*** DONE Computing reaching definitions from Marker algorithm
-The Marker algorithm is capable of computing SSA form of a
-program. The program, however, does not need to be transformed into
-SSA form. The only task of an RDA is to obtain reaching
-definitions. We split up the computation into two phases:
-1. In the first phase, the implementation constructs sparse RD graph
-   separately for every allocated variable. Sparse RD graph is a
-   graph, where for every reaching definition $(I_1, I_2)$ exists a path
-   $P = (p_1, p_2, \cdots, p_n)$ where $p_1 = I_1$ and $p_n = I_2$. Each node $p \in
-   P$ is either a definition, use or a \phi node. The path may consist of
-   multiple \phi nodes, but it might be trivial as well. The construction
-   is straightforward: whenever a variable use $u$ is encountered,
-   lookup all definitions of the variable using =readVariable=. When
-   =\phi.appendOperand(x)= is called, add an edge $(x, \phi)$ to the
-   sparse RD graph. Then, for the definition $d$ of the variable
-   returned by =readVariable=, add an edge $(u, d)$ to the sparse RD
-   graph.
-2. In the second phase, the control flow graph $(V, E)$ of the program
-   is traversed once again. For every use $u \in V$ of variable $v$, a
-   BFS search of the sparse RD graph for $v$ is started in $u$. If the
-   definition found is not a \phi node, it is added as a reaching
-   definition. If it is a \phi node, the search continues to its
-   predecessors.
-
-The original analysis is field-sensitive. In the next section, we
-modify the algorithm to be field-sensitive.
-
-*** DONE Field sensitivity
-
-Every definition and use have an associated interval of memory that is
-being accessed by the instruction. Data structure used for
-=current_def= and =last_def= does not consider the interval when
-looking up definitions in =readVariable=. We have decided to design a
-new custom data structure that considers the intervals while looking
-up variables. The data structure works similarly to a map which maps
-intervals to values of some type -- in this case CFG nodes. We call it
-=IntervalMap=.
-
-When a definition is encountered, it is necessary to save the interval
-of the definition along with the CFG node where the definition is to
-the custom data structure.
-
-When a use is encountered, modified =readVariable= function looks up
-overlapping definitions from the custom data structure. =readVariable=
-is modified to return a set of definitions rather than a single
-definition. That is because two or more subintervals of the used
-interval could be defined by different instructions and all of the
-instructions are reaching definitions, as they do not over-write one
-another completely.
-
-When =readVariable= finds a definition of a subinterval, which is
-smaller than the use interval $i_U$, the lookup must continue to
-predecessor blocks and attempt to find a set of intervals $\mathcal I$
-such, that by uniting all $i \in \mathcal I$, we get an interval $i_R$
-such, that $i_U \subseteq i_R$. The search for definition ends once the
-set is found for every predecessor basic block of the current basic
-block or when an entry node of the CFG is reached.
-
-The =readVariableRecursive= function adds \phi nodes for the variable
-when necessary. Whenever a \phi node is created, it has the same interval
-of the variable as the use node it is created for.
-
-Sometimes, the accessed interval of memory is not known at the time of
-compilation. In this case, the interval is stretched to the whole
-interval of allocation variable, if known. If the allocation size is
-not known either, maximum allocation size is used. When there is a
-definition of an unknown interval, the analysis must assume it could
-be definition of any part of the interval. Multiple definitions of
-unknown intervals should not kill each other, as they could both be
-reaching definitions for all uses reachable in the CFG by a path where
-the whole range of the variable is not over-written. This issue is
-addressed in the following section.
-
-*** DONE Strong and weak definitions
-As the algorithm needs to remember multiple definitions in case the
-interval is unknown or a pointer might point to multiple variables, we
-have chosen to use weak definitions to achieve that. Marker algorithm
-will again need to be modified to consider them.
-
-We extend the Marker algorithm with two new work structures:
-=current_weak_def= and =last_weak_def=. The semantics is similar to
-=current_def= and =last_def= from the Marker algorithm.
-
-In =writeVariable=, the choice of the structure where to save the
-definition gets a little more complex again. Weak updates will be
-saved to =last_weak_def= or =current_weak_def= depending on the
-context, while strong updates will be saved to =last_def= or
-=current_def=. When encountering a strong definition, intervals of
-weak definitions need to be modified not to overlap with the strong
-definition. This way, the strong definition ``kills'' the weak
-definition. We extend the =IntervalMap= data structure to allow this.
-
-In the previous section, we have mentioned that =readVariable= can
-stop the search for definitions once it finds a set of definitions
-that ``covers'' the interval of use. We may not add the weak
-definition in the set of intervals $\mathcal I$. Only strong
-definitions will be added to the set of intervals. Had we added the
-weak definitions too, it could happen that a definition of unknown
-interval of an array is definition of single element of the array and
-the weak definition would be reported as the only reaching definition
-of a use of different element of the array. This could result in the
-strong definition being marked as irrelevant, which should not happen.
-
-*** DONE Sealed blocks
-The Marker algorithm is capable of constructing SSA form of programs
-while loading the program representation from a file. Because of this,
-it maintains a set of blocks called =sealedBlocks=, that holds all
-blocks that already have all their predecessors added. In our case, we
-already have the whole program loaded, so we can consider all of our
-basic blocks to be loaded -- Braun et al refer to this as
-/sealed/\nbsp{}\cite{BraunSSA}.
+DG library and the LLVM infrastructure, continues by discussing
+designed modifications of the Marker algorithm and finally, the new
+reaching definitions analysis implementation.
 
 ** DONE DG Library
 The slicer used in \sbt{} uses the DG library\nbsp{}\cite{ChalupaDG} to
@@ -865,7 +781,8 @@ that uses DG.
 Before processing any program, DG loads the program into its own
 framework. Analyses that are part of DG are independent of the program
 representation, because they only use DG framework which handles the
-details. DG currently supports only LLVM intermediate representation.
+details. However, DG currently supports only LLVM intermediate
+representation.
 
 *** DONE LLVM
 
@@ -874,10 +791,7 @@ consists of multiple libraries and tools. One of the tools is clang --
 a compiler of C language.
 
 LLVM defines its own intermediate representation(LLVM IR) of a program. The
-representation looks very similar to assembler. This representation is
-processed by a subgraph builder. The subgraph builder adds information
-into every node of the program's CFG about which variables are defined
-and used in the node.
+representation looks very similar to assembler.
 
 \label{partialSSA} Any program in LLVM IR is guaranteed to be in
 /partial SSA form/. Partial SSA form means, that there is at most one
@@ -918,15 +832,138 @@ between instructions. The original reaching definitions analysis in DG
 uses the dense approach, as described in section \ref{denseRDA}.
 
 Prior to the reaching definitions analysis itself, DG builds a
-subgraph of program's control flow graph\index{CFG}. The subgraph does
-not contain all types of instructions. Rather, it consists only of
-store instructions, call instructions, return instructions and all
-memory allocations. In spite of not containing all instructions, it
-reflects structure of the program. Each instruction in the subgraph
-that defines some memory object already has an associated points-to
-information from pointer analysis. Thanks to this, it is possible to
-tell which variables are strongly or weakly defined in a particular
-CFG node.
+subgraph of program's control flow graph\index{CFG} from the program
+representation. The subgraph does not contain all types of
+instructions. Rather, it consists only of store instructions, call
+instructions, return instructions and all memory allocations. In spite
+of not containing all instructions, it reflects structure of the
+program. Each instruction in the subgraph that defines some memory
+object already has an associated points-to information from pointer
+analysis. Thanks to this, it is possible to tell which variables are
+strongly or weakly defined in a particular CFG node.
+
+** DONE Implemented reaching definitions analysis algorithm
+
+The implemented reaching definitions analysis is based on the Marker
+algorithm\nbsp{}\cite{BraunSSA}. As described in\nbsp{}\ref{marker}, the algorithm
+transforms a program into SSA form, which is not exactly what we
+need. We start by adapting the algorithm to compute reaching
+definitions.
+
+*** DONE Computing reaching definitions from Marker algorithm
+In SSA form, every use of a variable has exactly one reaching
+definition. Thanks to this property, it is trivial to compute reaching
+definitions in a program that is in SSA form. Thus, transforming
+memory operations in the program into SSA form yields reaching
+definitions. We split up the computation into two phases:
+1. In the first phase, the implementation constructs a /sparse RD
+   graph/ separately for every allocated variable. Sparse RD graph is
+   a graph, where for every reaching definition $(I_1, I_2)$ exists a
+   path $P = (p_1, p_2, \cdots, p_n)$ where $p_1 = I_1$ and $p_n = I_2$. Each node
+   $p \in P$ is either a definition, use or a \phi node. The path may
+   consist of multiple \phi nodes, but it might be trivial as well. The
+   construction is straightforward: whenever a variable use $u$ is
+   encountered, lookup the definition of the variable (using
+   =readVariable=). If a \phi node is created as a result, add an edge
+   $(x, \phi)$ to the sparse RD graph for each operand $x$ of the \phi
+   node. Then, for the definition $d$ of the variable returned by
+   =readVariable=, add an edge $(u, d)$ to the sparse RD graph.
+2. In the second phase, the control flow graph $(V, E)$ of the program
+   is traversed once again. For every use $u \in V$ of variable $v$, a
+   BFS search of the sparse RD graph for $v$ is started in $u$. If the
+   definition found is not a \phi node, it is added as a reaching
+   definition. If it is a \phi node, the search continues to its
+   predecessors.
+
+The original dense analysis is field-sensitive. In the next section,
+we modify the new algorithm to be field-sensitive too.
+
+*** DONE Field sensitivity
+\label{ch:implFieldSens} Every definition and use have an associated
+interval of bytes in memory that is being accessed by the
+instruction. Data structure used for =current_def= and =last_def= does
+not consider the interval when looking up definitions in
+=readVariable=. We have decided to design a new custom data structure
+that considers the intervals while looking up variables. The data
+structure works similarly to a map which maps intervals to values of
+some type -- in this case CFG nodes. We call it =IntervalMap=.
+
+When a definition is encountered, it is necessary to save the interval
+of the definition along with the CFG node where the definition is to
+the =IntervalMap=.
+
+When a use is encountered, modified =readVariable= function looks up
+overlapping definitions from the =IntervalMap=. =readVariable=
+is modified to return a set of definitions rather than a single
+definition. That is because two or more subintervals of the used
+interval could be defined by different instructions and all of the
+instructions are reaching definitions, as they do not over-write one
+another completely.
+
+When =readVariable= finds a definition in the current block of a
+subinterval $i_S$, which is smaller than the use interval $i_U$, the
+lookup must continue to predecessor blocks. In each predecessor block,
+it attempts to find a set of intervals $\mathcal I$ such that $(i_U
+\setminus i_S) \subseteq \bigcup_{i \in \mathcal I}$. In other words, find
+definitions for the ``missing'' parts of the interval. The search for
+definition ends once the set is found for every predecessor basic
+block of the current basic block or when the entry node of the CFG is
+reached.
+
+The =readVariableRecursive= function adds \phi nodes for the variable
+when necessary. Whenever a \phi node is created, the definition and use
+represented by the \phi node have the same interval as the use it is
+created for.
+
+Sometimes, the accessed interval of memory is not known at the time of
+compilation. In this case, the interval is stretched to the whole
+interval of allocation variable, if known. If the allocation size is
+not known either, maximum allocation size is used. When there is a
+definition of an unknown interval, the analysis must assume it could
+be definition of any part of the interval. Multiple definitions of
+unknown intervals should not kill each other, as they could both be
+reaching definitions for all uses reachable in the CFG by a path where
+the whole range of the variable is not over-written. This issue is
+addressed in the following section.
+
+*** DONE Strong and weak definitions
+As the algorithm needs to remember multiple definitions in case the
+interval is unknown or a pointer might point to multiple variables, we
+use weak definitions to achieve that. Marker algorithm again needs to
+be modified to consider them.
+
+We extend the Marker algorithm with two new map structures:
+=current_weak_def= and =last_weak_def=. The semantics is similar to
+=current_def= and =last_def= from the Marker algorithm.
+
+In =writeVariable=, the choice of the structure where to save the
+definition gets a little more complex again. Weak updates will be
+saved to =last_weak_def= or =current_weak_def= depending on the
+context, while strong updates will be saved to =last_def= or
+=current_def=. When encountering a strong definition, intervals of
+weak definitions need to be modified not to overlap with the strong
+definition. This way, the strong definition ``kills'' the weak
+definition. We extend the =IntervalMap= data structure to allow this.
+
+In the previous section, we have mentioned that =readVariable= can
+stop the search for definitions once it finds a set of definitions
+that ``covers'' the interval of use. We may not add the weak
+definition in the set of intervals $\mathcal I$, but we add it to the
+result as a reaching definition. Only strong definitions are added to
+the set of intervals. Had we added the weak definitions too, it could
+happen that a definition of unknown interval of an array is definition
+of single element of the array and the weak definition would be
+reported as the only reaching definition of a use of different element
+of the array. This could result in the strong definition being marked
+as irrelevant, which should not happen.
+
+*** DONE Sealed blocks
+The Marker algorithm is capable of constructing SSA form of programs
+while loading the program representation from a file. Because of this,
+it maintains a set of blocks called =sealedBlocks=, that holds all
+blocks that already have all their predecessors added. In our case, we
+already have the whole program loaded, so we can consider all of our
+basic blocks to be sealed\nbsp{}\cite{BraunSSA}.
 
 ** TODO New reaching definitions analysis implementation
 This chapter describes how the new reaching definitions
@@ -1058,8 +1095,10 @@ last basic block of the function =foo=.
 
 Basic block splitting is only necessary if the function's definition
 is part of the program. In case the function is external, there is no
-need to split up the basic block and the implementation does not split
-it up.
+need to split up the basic block, because the instructions in the
+block are not known. The call instruction is in this case treated as a
+use of all pointer operands and optionally also definition of all
+pointer operands.
 
 *** DONE Treating unknown memory
 Sometimes, pointer analysis is unable to tell where a pointer may
@@ -1080,33 +1119,24 @@ all variables in the program, respectively. Doing this removes some
 complex handling of unknown pointers from the next phase of the
 analysis.
 
-*** TODO Using intervals to handle field-sensitivity
-# TODO polish and connect to rest of the text
+*** DONE Using intervals to handle field-sensitivity
 \label{chap:intervals} The Marker algorithm itself does not consider
-aggregate data structures. In order to support analyzing them, it
-needs to be modified. Each definition or use of a variable have an
-associated interval of affected bytes. This interval is later used to
-look up reaching definitions of a variable. An interval has a start
-and a length.
+aggregate data structures. We have introduced several modifications in
+order to incorporate it. As mentioned before in
+section\nbsp{}\ref{ch:implFieldSens}, we use a different data structure for
+the work structures of the Marker algorithm. This section describes
+how the new data structure is implemented and used.
 
-The first intermediate data structure that is part of the new
-framework is =DisjointIntervalSet=. The set allows to insert intervals
-while maintaining an invariant, that all intervals inside are
-disjoint. When inserting an interval that has a non-empty intersection
-with some of the intervals inside, the set ensures that these two
-intervals are united into a single interval.
-
-=IntervalMap= is the second important data structure of the
-framework. It provides functionality that makes the analysis
-field-sensitive. =IntervalMap= on the first sight looks similarly to
+=IntervalMap= is the most important data structure of the
+framework. =IntervalMap= on the first sight looks similarly to
 =std::map= available in C++. It allows to save arbitrary types under
 =Interval= keys. The difference is in the lookup
 functions. =IntervalMap= offers 3 main functions: =collect=,
 =collectAll= and =killOverlapping=.
 
-The =collect= function is designed to work with strong updates. It
-searches the entries backwards, starting by the last entry added. 
-It collects all values from the interval map such, that the specified
+The =collect= function is designed to work with strong definitions. It
+searches the entries backwards, starting by the last entry added.  It
+collects all values from the interval map such, that the specified
 interval is covered by union of key intervals of the values returned.
 
 =collectAll= works with weak updates. As opposed to =collect=, it
@@ -1119,11 +1149,26 @@ the specified interval.
 specified interval. After =killOverlapping=, calling =collectAll= with the
 same interval or any of its subsets returns an empty result.
 
+Each definition or use of a variable have an associated interval of
+affected bytes. This interval is later used to look up reaching
+definitions of a variable. An interval has a start and a length.
+
+The first intermediate data structure that is part of the new
+framework is =DisjointIntervalSet=. The set allows to insert intervals
+while maintaining an invariant, that all intervals inside are
+disjoint. When inserting an interval that has a non-empty intersection
+with some of the intervals inside, the set ensures that these two
+intervals are united into a single interval.
+
 =IntervalMap= is used as a data structure for structures that are
 needed by Braun et al. algorithm -- that is =current_def=,
 =current_weak_def=, =last_def= and =last_weak_def=. This way, the
 field-sensitivity is considered in the phase of building the sparse RD
 graph.
+
+The =IntervalMap=, is unable to handle an unknown offset. Addressing
+unknown offset requires further modifications of the algorithm which
+are discussed in the following section.
 
 *** DONE Treating unknown offset
 When the pointer analysis returns an unknown offset of a definition or
@@ -1154,65 +1199,102 @@ reaching definitions of $a[0]$ at \encircle{1}. Thus, the analysis has
 to assume they are weak definitions despite the fact that $a$
 points to a single memory object -- the array.
 
-* TODO Experimental evaluation of the new analysis
+* DONE Experimental evaluation of the new analysis
 \label{ch:Experiment} In this chapter, the new implementation is
-evaluated experimentally. For the evaluation, we have used subset of
+evaluated experimentally. For the evaluation, we have used a subset of
 benchmarks from the software verification competition
 SV-COMP[fn::https://sv-comp.sosy-lab.org]. Each benchmark is given as
-a C program with a list of properties it satisfies. \sbt{} is run with
-the whole set of benchmarks. After running single benchmark, output of
-\sbt{} is inspected and compared with the expected output. We also
-measure the CPU time it took \sbt{} to compute the result.
-
+a C program with a list of properties it satisfies.After running
+single benchmark, output of \sbt{} is inspected and compared with the
+expected output. We also measure the CPU time it took \sbt{} to
+compute the result.
 ** TODO Time
-The goal of this thesis is to design and implement a *faster* reaching
+The goal of this thesis is to implement a *faster* reaching
 definitions analysis. This subchapter compares the new and the
-original implementation in terms of speed. 
+original implementation in terms of speed. In order to obtain data for
+our measurements, we ran \sbt{} on the same set of benchmarks two
+times. In the first run, we instructed \sbt{} to use the original
+dense analysis and in the second run, \sbt{} uses the new
+implementation. The scatter plot comparing the two implementations can
+be seen in Figure\nbsp{}\ref{fig:sparseVsDense}.
 
-In order to evaluate time, we have run the same set of benchmarks with
-the same version of \sbt{} twice. The only difference between the two
-runs was the reaching definitions analysis used. The new
-implementation did not provide significant improvements in terms of
-the overall run time. The problem is, that the RDA itself is too
-insignificant to provide improvements in terms of run time.
+# TODO place the nice scatter plot here
+#+BEGIN_LaTeX
+  \begin{figure}
+    \label{fig:sparseVsDense}
+    \caption{Comparison of the new and the original implementation}
+  \end{figure}
+#+END_LaTeX
 
-Let us evaluate how much time was saved in the phase of RDA. How much
-time can really be saved. From the 50 hours of running our 
+Each point of this plot represents a single benchmark. Its X
+coordinate represents time of the new implementation, while the Y
+coordinate represents time of the old implementation. The line
+represents a linear function $y = x$. A point above the function
+represents a benchmark where the new implementation performed better
+and a point below represents a benchmark where the original
+implementation performed better. 
+
+# TODO evaluate the scatter plot:
+It is clear, that the new implementation performed better in more
+cases than the original one. 
+# ... AND?
 
 ** TODO Memory Used
-During the experiments, there have been cases where the new
-implementation ran out of memory faster than the original one. There
-are two possible causes for this:
+# TODO extend this section?
+Experiments revealed some cases where the new implementation ran out
+of memory on benchmarks where the original implementation did not. We
+have identified two possible causes for this:
+
 1. Unknown memory treatment consumes too much memory.
 2. Intervals framework used for field-sensitivity consumes too much
    memory.
 
-** TODO Accuracy
+Both of these issues will be addressed in the future.
+
+** DONE Accuracy
 There should be no difference between the new and the original
-analysis in terms of accuracy. However, thanks to the ``interval
-framework'' introduced in\nbsp{}\ref{chap:intervals}, the new implementation
-of semi-sparse analysis is more accurate than the original
-implementation. Consider this program:
+analysis in terms of accuracy. However, we have noticed different
+results of slicing with the new implementation. Thanks to the
+``interval framework'' introduced in\nbsp{}\ref{chap:intervals}, the new
+implementation of semi-sparse analysis is more accurate than the
+original implementation.
 
-  #+BEGIN_SRC c
-    int a[] = {0, 1, 2, 3}; // A
-    a[0] = 5; // B
-    a[1] = 6; // C
-    a[2] = 7; // D
-    a[3] = 8; // E
+#+BEGIN_LaTeX
+  \begin{figure}
+    \begin{lstlisting}[language=C]
+      int a[] = {0, 1, 2, 3}; /\encircle{1}/
+      a[0] = 5; /\encircle{2}/
+      a[1] = 6; /\encircle{3}/
+      a[2] = 7; /\encircle{4}/
+      a[3] = 8; /\encircle{5}/
 
-    for (size_t i = 0; i < 4; ++i) {
-        printf("%d\n", a[i]); // RD(a) = ???
-    }
-  #+END_SRC
-  - the original analysis reports $RD(a) = \{ A, B, C, D, E\}$
-  - the new analysis is able to tell that $\{B,C,D,E\}$ together
-    overwrite the whole range of =a= and therefore reports $RD(a) =
-    \{B,C,D,E\}$
+      for (size_t i = 0; i < 4; ++i) {
+        printf("%d\n", a[i]); /\encircle{6}/
+      }
+
+    \end{lstlisting}
+    \caption{fig:strongCoverage}
+  \end{figure}
+#+END_LaTeX
+
+
+Consider the program in Figure\nbsp{}\ref{fig:strongCoverage}. Now, let us
+investigate what instructions should be reaching definitions of
+=$a[i]$= at \encircle{6}. The offset is unknown, so our implementation
+looks for definitions for the whole array. It finds $\{ \encircle{5},
+\encircle{4}, \encircle{3}, \encircle{2} \}$. The array only has four
+elements, so the search for definitions is stopped at
+\encircle{2}. However, the original implementation does not stop the
+search for definitions, so it finds $\{ \encircle{5}, \encircle{4},
+\encircle{3}, \encircle{2}, \encircle{1} \}$.
+
+With our new implementation, the slicer can slice away the
+instructions that initialize the array (at \encircle{1}), because they
+are over-written by \encircle{2}, \cdots \encircle{5}.
 
 * TODO Conclusion
 \label{ch:Summary} This chapter summarizes the work done as part of
-this thesis and presents opportunities for possible future work.
+this thesis and presents future work.
 
 ** DONE Summary of work done
 As a part of this thesis, we studied four algorithms for computing
@@ -1222,17 +1304,24 @@ have designed modifications for the algorithm to compute reaching
 definitions, work with aggregate data structures and weak updates. The
 modified algorithm has been implemented into \sbt{}. The new
 implementation is then compared with the original implementation in
-terms of accuracy, time and memory used.
+terms of accuracy, time and memory used. We found that the new
+analysis consumes too much memory in some cases and identified the
+cause of it. The new implementation also turned out to be more
+accurate than the original one. We also experimentally proved the new
+implementation to be faster than the original one in majority of
+cases.
 
-** TODO Possible future work
+** TODO Future work
 
-We believe the new implementation could be optimized even further
+Uses of unknown memory in the current implementation consume too much
+memory and also time. In the future, we will optimize the analysis
+even further.
 
 It is possible to further speed up computation of Reaching Definitions
 by incorporating the trivial phi node removal
 algorithm\nbsp{}\cite{BraunSSA}. The sparse graph contains many redundant \phi
-functions that could be removed to speed up the final phase of
-reaching definitions propagation.
+nodes that could be removed to speed up the final phase of reaching
+definitions propagation.
 
 As the algorithm is implemented in a slicer, it could be optimized
 even further by starting at the slicing criterion and searching the
@@ -1241,7 +1330,8 @@ slicing criterion, which is what the slicer needs to derive the
 control dependencies.
 
 Performance of the =IntervalMap= data structure could be definitely
-improved.
+improved. For example, we could use different data structure in the
+background for the representation of intervals.
 
 The reaching definitions analysis could benefit from additional
 accuracy it could gain by considering different instances of
