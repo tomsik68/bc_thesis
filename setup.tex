@@ -41,9 +41,13 @@
   definitions analysis that is part of software verification tool
   \sbt. The original ``dense'' analysis propagates all reaching
   definitions throughout the whole control flow graph of a program.
-  The new, improved analysis is based on transformation of memory
-  operations in a program to static single assignment form, which
-  directly reveals reaching definitions. },
+  The new analysis is based on transformation of memory operations in
+  a program to static single assignment form, which directly reveals
+  reaching definitions. Experimental measurements reveal that the new
+  implementation turns out to be slower than the original one.
+  We also investigate why that is and propose necessary changes to the
+  implementation.
+  },
   thanks = {I would like to thank to my advisor and consultant for their time
   and advice they provided during my work on this thesis. This
   thesis would not have been possible without them.
