@@ -7,7 +7,6 @@
 #+BEGIN_SRC emacs-lisp :exports none
   (setq org-babel-inline-result-wrap "%s")
 #+END_SRC
-
 * DONE Introduction
 
 Nowadays, computer programs control gadgets everywhere around
@@ -52,18 +51,19 @@ This thesis is divided into individual chapters as follows: Chapter
 general. Key terms, such as program, control flow graph or static
 single assignment form are defined there. Chapter\nbsp{}\ref{ch:RDA} defines
 what a reaching definition is, what is a reaching definitions analysis
-and discusses the a sunoke algorithm to compute reaching
-definitions in programs without pointers. Analyzing programs with
-pointers is discussed next. Then discusses various algorithms to
-compute reaching definitions. Chapter\nbsp{}\ref{ch:Symbiotic}, introduces
-\sbt{}, explains its architecture and introduces LLVM as
+and discusses the a sunoke algorithm to compute reaching definitions
+in programs without pointers. Analyzing programs with pointers is
+discussed next. Then discusses various algorithms to compute reaching
+definitions. Chapter\nbsp{}\ref{ch:Symbiotic}, introduces \sbt{}, explains
+its architecture and introduces LLVM as
 well. Chapter\nbsp{}\ref{ch:Implementation} discusses the DG library and the
 chosen implementation approach based on Braun et al.
 algorithm\nbsp{}\cite{BraunSSA}. Chapter\nbsp{}\ref{ch:Experiment} shows an
 experimental comparison of the original implementation of reaching
 definitions analysis and the new implementation. Implementations are
-compared in terms of time and accuracy. Chapter\nbsp{}\ref{ch:Summary}
-presents future work and summarizes the thesis.
+compared in terms of time, accuracy and
+correctness. Chapter\nbsp{}\ref{ch:Summary} presents future work and
+summarizes the thesis.
 
 * DONE Program analysis
 \label{ch:ProgAnalysis}
@@ -1191,32 +1191,28 @@ intervals are united into a single interval.
 the Braun et al. algorithm. This way, the field-sensitivity is
 considered in the phase of building the sparse RD graph.
 
-The =IntervalMap=, is unable to handle an unknown offset. Addressing
-unknown offset requires further modifications of the algorithm which
-are discussed in the following section.
-
 \clearpage
 * DONE Experimental evaluation of the new analysis
 \label{ch:Experiment} In this chapter, the new implementation is
 evaluated experimentally. For the evaluation, we have used a subset of
 benchmarks from the software verification competition
-SV-COMP[fn::https://sv-comp.sosy-lab.org]. Each benchmark is a C program
-with a list of properties it satisfies. After running a single
-benchmark, the output of \sbt{} is inspected and compared with the
-expected output. We measure the time it took \sbt{} to compute
+SV-COMP[fn::https://sv-comp.sosy-lab.org]. Each benchmark is a C
+program with a list of properties it satisfies. For each of the
+benchmarks, we start \sbt{} with the original implementation and with
+the new implementation. We measure the time it took \sbt{} to compute
 individual phases of the process, including reaching definitions
 analysis.
 
 ** DONE Time
 We have measured the time it took to perform the RDA with the new and
 old implementation for a number of benchmarks. From the data, we have
-created the scatter plot in Figure ... . Each point of the scatter
+created the scatter plot in Figure\nbsp{}\ref{fig:denseVsSemisparse}. Each point of the scatter
 plot represents a single benchmark. Its X coordinate represents the
 time it took the new implementation to analyze the program. Y
 coordinate represents the time it took the original implementation to
 analyze the same program.
 
-#+BEGIN_SRC gnuplot :exports results :file denseVsSemisparse.png
+#+BEGIN_SRC gnuplot :exports none :file denseVsSemisparse.png
   set datafile separator ';'
 
   set logscale xy 10
@@ -1229,7 +1225,12 @@ analyze the same program.
   plot 'results.csv' using 2:7 with points pt 7 ps 1 title 'results', f(x) title 'y = x'
 #+END_SRC
 
-As we can see in the figure, the new implementation is considerably
+#+CAPTION: Comparison of time of the original and the new implementation
+#+NAME: fig:denseVsSemisparse
+#+RESULTS: fig:denseVsSemisparse
+[[file:denseVsSemisparse.png]]
+
+As we can see in the Figure\nbsp{}\ref{fig:denseVsSemisparse}, the new implementation is considerably
 slower than the original one. We think it is caused by the combination
 of multiple deficiencies of the current implementation:
 
@@ -1241,16 +1242,45 @@ of multiple deficiencies of the current implementation:
    memory will be more complicated to handle. We believe this is the
    most significant bottleneck for the performance of our
    implementation.
+
 2. All definitions of heap-allocated memory are weak
    definitions. Thus, the whole CFG of the program is search every
    time a use of (a part of) a heap-allocated value causes the whole
    program to be traversed. This might be a bottleneck for performance
    of our implementation.
-3. We believe there is too many trivial \Phi nodes inserted, which
-   prolongs the final phase of propagation of information. Eliminating
-   trivial \Phi nodes as explained by Braun et al.\nbsp{}\cite{BraunSSA} during
-   the construction of SSA form could help the performance of our
-   implementation.
+
+3. There is too many trivial \Phi nodes inserted, which prolongs the
+   final phase of propagation of information. Eliminating trivial \Phi
+   nodes as explained by Braun et al.\nbsp{}\cite{BraunSSA} during the
+   construction of SSA form would help the performance of our
+   implementation. To confirm this, we perform an additional
+   measurement.
+
+
+For our measurement of trivial \Phi nodes, we count how many \Phi nodes are
+inserted by our implementation. We also count how many of them are
+/trivial/ -- they have at most one operand or multiple operands which
+are the same variable. The results of our measurements can be seen in
+Figure\nbsp{}\ref{fig:trivialPhiPercent}.
+
+#+BEGIN_LaTeX
+  \begin{figure}
+    \includegraphics[height=.4\textheight]{trivial_phi_plot.eps}
+    \caption{Percentage of trivial $\Phi$ nodes inserted by our implementation visualized as box plot.}
+    \label{fig:trivialPhiPercent}
+  \end{figure}
+#+END_LaTeX
+
+According to our measurements, the average percentage of trivial \Phi
+nodes inserted into the program is about 68.78%. These \Phi nodes cause
+our implementation to use additional memory and also compute
+unnecessary information.
+
+The redundant \Phi nodes can be removed using the trivial \Phi node removal
+algorithm presented by Braun et al.\nbsp{}\cite{BraunSSA}. Removing them
+would influence the time it takes to propagate reaching definitions in
+the final step of our algorithm, as the path in sparse RD graph from
+the use to the definition would become shorter.
 
 ** DONE Out of memory errors
 Experiments revealed some cases where the new implementation ran out
@@ -1262,7 +1292,6 @@ have identified two possible causes for this:
 2. Intervals framework used for field-sensitivity consumes too much
    memory. Replacing it with a bit vector could result in more optimal
    memory consumption.
-
 ** DONE Accuracy
 There should be no difference between the new and the original
 analysis in terms of accuracy. However, we have noticed different
@@ -1308,6 +1337,31 @@ are overwritten by \encircle{2}, \cdots \encircle{5}. As a result, the
 slicer is able to produce slightly smaller programs in cases similar
 to the one presented above.
 
+** DONE Correctness
+While running the benchmarks, we check \sbt{}'s answer against the
+expected answer. To ensure that the new implementation works as
+expected, we compare the amount of correctly classified benchmarks
+with the original implementation. The results are shown in
+Table\nbsp{}\ref{fig:correctnessTable}.
+
+#+CAPTION: Correctness of the new and the original implementation
+#+NAME: fig:correctnessTable
+| implementation | correct | incorrect | other  |
+|----------------+---------+-----------+--------|
+| original       |    2322 |         3 |   3008 |
+| new            |    2318 |         8 |   3007 | 
+
+The table divides answers of \sbt{} into three categories: correct,
+incorrect and others. Each of the cells shows how many results of
+\sbt{} fall into the category. The table shows that using the new
+implementation causes \sbt{} to produce five more incorrect
+results. Out of 5333 benchmarks, the new implementation produces
+different results only in five cases. This shows that the new
+implementation preserves the ability of \sbt{} to produce the right
+answer in the majority of situations. There are still a few unknown
+problems in the new implementation. We plan to investigate and address
+them in the future.
+
 * DONE Conclusion
 \label{ch:Summary} This chapter summarizes the work done as part of
 this thesis and presents future work.
@@ -1315,18 +1369,20 @@ this thesis and presents future work.
 ** DONE Summary of work done
 As a part of this thesis, we studied four algorithms for computing
 reaching definitions. Then, we chose to implement an algorithm based
-on the Braun et al. algorithm. Prior to implementation, we
-have designed modifications for the algorithm to compute reaching
+on the Braun et al. algorithm. Prior to implementation, we have
+designed modifications for the algorithm to compute reaching
 definitions, work with aggregate data structures and weak
 definitions. The modified algorithm has been implemented into
 \sbt{}. The new implementation is then compared with the original
 implementation in terms of accuracy, time and memory used. We found
 that the new analysis consumed too much memory in some cases and
 presented two possible causes of it. We experimentally proved that the
-new analysis is slower than the original one and presented possible
-causes along with possible ways to optimize the new
-implementation. The new implementation turned out to be more accurate
-than the original one in some cases.
+new analysis is slower than the original one and presented three
+possible causes along with possible ways to optimize the new
+implementation. We have also experimentally shown there are too many
+trivial \Phi nodes inserted by our implementation and discussed a way to
+elliminate this issue. The new implementation turned out to be more
+accurate than the original one in some cases.
 
 ** DONE Future work
 
@@ -1346,6 +1402,10 @@ Lu, Zhang and Zhao\nbsp{}\cite{SootDDRDA} did with their analysis. The
 analysis would start at the slicing criterion and search the CFG
 backward only for definitions of variables that really affect the
 slicing criterion.
+
+Our measurements have shown the new implementation causes \sbt{} to
+produce an incorrect result in five cases. We plan to investigate why
+,address the issues and make the implementation fully correct.
 
 Performance of the =IntervalMap= could be definitely improved by using
 a different data structure in the background. A good candidate would
