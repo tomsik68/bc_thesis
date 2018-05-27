@@ -1425,8 +1425,8 @@ possible.
 * DONE Running the new implementation
 \label{ch:testing} The new reaching definitions analysis is part of
 the DG library. The source code along with build files can be found in
-=dg.zip=. This guide is targeted for Ubuntu system of version at least
-16.04.
+the attached =dg.zip=. This guide is targeted for Ubuntu system of
+version at least 16.04.
 
 ** DONE Running inside DG
 The new implementation can be tested with regression tests or
