@@ -1265,7 +1265,9 @@ Figure\nbsp{}\ref{fig:trivialPhiPercent}.
 
 #+BEGIN_LaTeX
   \begin{figure}
+\begin{center}
     \includegraphics[height=.4\textheight]{trivial_phi_plot.eps}
+\end{center}
     \caption{Percentage of trivial $\Phi$ nodes inserted by our implementation visualized as box plot.}
     \label{fig:trivialPhiPercent}
   \end{figure}
