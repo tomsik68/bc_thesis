@@ -1194,14 +1194,44 @@ considered in the phase of building the sparse RD graph.
 \clearpage
 * DONE Experimental evaluation of the new analysis
 \label{ch:Experiment} In this chapter, the new implementation is
-evaluated experimentally. For the evaluation, we have used a subset of
+evaluated experimentally. For the evaluation, we use a subset of
 benchmarks from the software verification competition
 SV-COMP[fn::https://sv-comp.sosy-lab.org]. Each benchmark is a C
 program with a list of properties it satisfies. For each of the
 benchmarks, we start \sbt{} with the original implementation and with
 the new implementation. We measure the time it took \sbt{} to compute
 individual phases of the process, including reaching definitions
-analysis.
+analysis. 
+
+Our configuration for running experiments was as follows:
+- \sbt{} timeout: =120s=
+- CPU: =Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz=
+- memory limit: =4 GB=
+
+** DONE Correctness
+While running the benchmarks, we check \sbt{}'s answer against the
+expected answer. To ensure that the new implementation works as
+expected, we compare the amount of correctly classified benchmarks
+with the original implementation. The results are shown in
+Table\nbsp{}\ref{fig:correctnessTable}.
+
+#+CAPTION: Correctness of the new and the original implementation
+#+NAME: fig:correctnessTable
+| implementation | correct | incorrect | other  |
+|----------------+---------+-----------+--------|
+| original       |    2322 |         3 |   3008 |
+| new            |    2318 |         8 |   3007 | 
+
+The table divides answers of \sbt{} into three categories: correct,
+incorrect and others. Each of the cells shows how many results of
+\sbt{} fall into the category. The table shows that using the new
+implementation causes \sbt{} to produce five more incorrect
+results. Out of 5333 benchmarks, the new implementation produces
+different results only in five cases. This shows that the new
+implementation preserves the ability of \sbt{} to produce the right
+answer in the majority of situations. There are still a few unknown
+problems in the new implementation. We plan to investigate and address
+them in the future.
 
 ** DONE Time
 We have measured the time it took to perform the RDA with the new and
@@ -1249,19 +1279,16 @@ of multiple deficiencies of the current implementation:
    program to be traversed. This might be a bottleneck for performance
    of our implementation.
 
-3. There is too many trivial \Phi nodes inserted, which prolongs the
-   final phase of propagation of information. Eliminating trivial \Phi
-   nodes as explained by Braun et al.\nbsp{}\cite{BraunSSA} during the
-   construction of SSA form would help the performance of our
-   implementation. To confirm this, we perform an additional
-   measurement.
+3. There is too many trivial \Phi nodes inserted. Too many trivial \Phi
+   nodes also cause our implementation to run out of memory.
 
-
-For our measurement of trivial \Phi nodes, we count how many \Phi nodes are
-inserted by our implementation. We also count how many of them are
-/trivial/ -- they have at most one operand or multiple operands which
-are the same variable. The results of our measurements can be seen in
-Figure\nbsp{}\ref{fig:trivialPhiPercent}.
+We were interested in why our implementation is slower than the
+original one. Multiple measurements show that our implementation
+inserts too many trivial \Phi nodes. For our measurements, we count how
+many \Phi nodes are inserted by our implementation. We also count how
+many of them are /trivial/ -- they have at most one operand or
+multiple operands which are the same variable. The results of our
+measurements can be seen in Figure\nbsp{}\ref{fig:trivialPhiPercent}.
 
 #+BEGIN_LaTeX
   \begin{figure}
@@ -1275,8 +1302,7 @@ Figure\nbsp{}\ref{fig:trivialPhiPercent}.
 
 According to our measurements, the average percentage of trivial \Phi
 nodes inserted into the program is about 68.78%. These \Phi nodes cause
-our implementation to use additional memory and also compute
-unnecessary information.
+our implementation to compute unnecessary information.
 
 The redundant \Phi nodes can be removed using the trivial \Phi node removal
 algorithm presented by Braun et al.\nbsp{}\cite{BraunSSA}. Removing them
@@ -1284,16 +1310,6 @@ would influence the time it takes to propagate reaching definitions in
 the final step of our algorithm, as the path in sparse RD graph from
 the use to the definition would become shorter.
 
-** DONE Out of memory errors
-Experiments revealed some cases where the new implementation ran out
-of memory on benchmarks where the original implementation did not. We
-have identified two possible causes for this:
-
-1. Handling of definitions and uses of unknown memory (discussed
-   in Section\nbsp{}\ref{ch:unknownMemory}) requires too much memory.
-2. Intervals framework used for field-sensitivity consumes too much
-   memory. Replacing it with a bit vector could result in more optimal
-   memory consumption.
 ** DONE Accuracy
 There should be no difference between the new and the original
 analysis in terms of accuracy. However, we have noticed different
@@ -1338,31 +1354,6 @@ instructions that initialize the array (at \encircle{1}) because they
 are overwritten by \encircle{2}, \cdots \encircle{5}. As a result, the
 slicer is able to produce slightly smaller programs in cases similar
 to the one presented above.
-
-** DONE Correctness
-While running the benchmarks, we check \sbt{}'s answer against the
-expected answer. To ensure that the new implementation works as
-expected, we compare the amount of correctly classified benchmarks
-with the original implementation. The results are shown in
-Table\nbsp{}\ref{fig:correctnessTable}.
-
-#+CAPTION: Correctness of the new and the original implementation
-#+NAME: fig:correctnessTable
-| implementation | correct | incorrect | other  |
-|----------------+---------+-----------+--------|
-| original       |    2322 |         3 |   3008 |
-| new            |    2318 |         8 |   3007 | 
-
-The table divides answers of \sbt{} into three categories: correct,
-incorrect and others. Each of the cells shows how many results of
-\sbt{} fall into the category. The table shows that using the new
-implementation causes \sbt{} to produce five more incorrect
-results. Out of 5333 benchmarks, the new implementation produces
-different results only in five cases. This shows that the new
-implementation preserves the ability of \sbt{} to produce the right
-answer in the majority of situations. There are still a few unknown
-problems in the new implementation. We plan to investigate and address
-them in the future.
 
 * DONE Conclusion
 \label{ch:Summary} This chapter summarizes the work done as part of
@@ -1521,3 +1512,4 @@ The linked file can then be run via =lli=:
 homepage[fn::https://staticafi.github.io/symbiotic/getting_started.html].
 When running \sbt{}, command line parameter \texttt{--slicer-params="-rda ss"} instructs the slicer to
 use the new implementation of RDA.
+ 
