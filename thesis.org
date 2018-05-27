@@ -52,21 +52,20 @@ experimentally using a non-trivial set of benchmarks.
 This thesis is divided into individual chapters as follows: Chapter
 \ref{ch:ProgAnalysis} introduces the reader to program analysis in
 general. Key terms, such as program, control flow graph or static
-single assignment form are defined there. Chapter\nbsp{}\ref{ch:RDA} starts
-by defining what a reaching definition is, what is a reaching
-definitions analysis and discusses the simplest naive algorithm to
-compute reaching definitions in programs without pointers. Analyzing
-programs with pointers is discussed next. Then, the chapter continues
-by discussing various algorithms to compute reaching definitions. In
-Chapter\nbsp{}\ref{ch:Symbiotic}, \sbt{} is introduced and its architecture
-is explained. Chapter\nbsp{}\ref{ch:Implementation} discusses LLVM, the DG
-library and the chosen implementation approach based on Marker
-algorithm\nbsp{}\cite{BraunSSA}. Chapter\nbsp{}\ref{ch:Experiment}
-shows an experimental comparison of the original implementation of
-reaching definitions analysis and the new
-implementation. Implementations are compared in terms of time and
-accuracy. Chapter\nbsp{}\ref{ch:Summary} presents possibilities for
-future work and summarizes the thesis.
+single assignment form are defined there. Chapter\nbsp{}\ref{ch:RDA} defines
+what a reaching definition is, what is a reaching definitions analysis
+and discusses the simplest naive algorithm to compute reaching
+definitions in programs without pointers. Analyzing programs with
+pointers is discussed next. Then discusses various algorithms to
+compute reaching definitions. Chapter\nbsp{}\ref{ch:Symbiotic}, introduces
+\sbt{}, explains its architecture and introduces LLVM as
+well. Chapter\nbsp{}\ref{ch:Implementation} discusses the DG library and the
+chosen implementation approach based on Braun et al.
+algorithm\nbsp{}\cite{BraunSSA}. Chapter\nbsp{}\ref{ch:Experiment} shows an
+experimental comparison of the original implementation of reaching
+definitions analysis and the new implementation. Implementations are
+compared in terms of time and accuracy. Chapter\nbsp{}\ref{ch:Summary}
+presents future work and summarizes the thesis.
 
 * DONE Program analysis
 \label{ch:ProgAnalysis}
@@ -75,14 +74,14 @@ Tools that find errors in programs use results of program analysis to
 decide whether or not there is an error in the program. There are two
 kinds of program analysis: dynamic analysis and static analysis. A
 verification tool may use either approach or some combination of
-both. The following sub-chapter briefly introduces both.
+both. The following section briefly introduces both.
 
 ** DONE Static and dynamic program analysis
 
 *Dynamic analysis* is based on watching the behavior of a program
 while the program is running. For example, one could replace C
 =malloc= and =free= functions by functions that track the
-allocations. This is how valgrind[fn::http://valgrind.org/]
+allocations. This is how Valgrind[fn::http://valgrind.org/]
 works. Another familiar example of dynamic analysis is unit
 testing. During unit testing, the program (or its part) is started
 with a user-specified input, and after finishing, its output is
@@ -92,7 +91,7 @@ every possible run of the program.
 
 \noindent *Static analysis* derives program properties from some
 program's representation without directly executing it. It could be
-the source code, compiled machine code or some kind of intermediate
+the source code, compiled machine code or an intermediate
 representation (such as Java bytecode or LLVM bitcode). Static
 analysis often has problems balancing between performance and
 accuracy. Decreasing accuracy of the analysis yields imprecise
@@ -100,8 +99,8 @@ results while increasing accuracy also increases the complexity of
 the analysis.
 
 This thesis focuses on reaching definitions analysis, which is a
-static analysis. The following sub-chapter continues with a more
-in-depth introduction to the static analysis.
+static analysis. The following section continues with a more
+in-depth introduction to static analysis in general.
 
 \clearpage
 ** DONE Key terms of static program analysis
@@ -111,7 +110,7 @@ in-depth introduction to the static analysis.
     \begin{minipage}[b]{0.5\textwidth}
       \begin{lstlisting}[language=C]
         int $i$;
-        scanf("%d", &i);
+        scanf("%d", &$i$);
         if ($i$ % 2 == 0)
             puts("even");
         else
@@ -144,15 +143,18 @@ in-depth introduction to the static analysis.
 A\nbsp{} /program/ is a sequence of elementary instructions.  Program's
 structure is reflected in its /control flow graph/. Formally, /control
 flow graph/ (CFG for short\index{CFG}) of a program $\mathcal P$ is a
-graph $G = (V, E)$, where $V$ is a finite set of vertices and $E
+graph $G = (V, E)$, where $V$ is a finite set of nodes and $E
 \subseteq V \times V$ is a set of edges. Each instruction of $\mathcal P$
-is represented by a vertex. If there exists a run of the program
+is represented by a node $v \in V$. If there exists a run of the program
 $\mathcal P$ where instruction $I_2$ is executed immediately after
-instruction $I_1$, then $(I_1, I_2) \in E$. We ignore labels on branches,
-as they are not needed for reaching definitions analysis. Notice that
-we ignore subprocedure boundaries -- i.e. CFG is interprocedural in
-our case. A /path/ in a CFG $(V, E)$ is a sequence $v_1, v_2, v_3, \cdots, v_n$
-such, that:
+instruction $I_1$, then $(I_1, I_2) \in E$. When a branching instruction
+(e.g., an if) is encountered, two edges are coming out of the
+node representing it. Each of the edges coming out of such statement
+is labeled with a condition under which it is followed. We ignore the
+labels on such edges, as they are not needed for reaching definitions
+analysis. Notice that we also ignore subprocedure boundaries --
+i.e., CFG is interprocedural in our case. A /path/ in a CFG $(V, E)$ is
+a sequence $v_1, v_2, v_3, \cdots, v_n$ such, that:
 
 - $v_1,v_2, v_3, \cdots, v_n \in V$, where $n \in \mathbb N$
 - $\forall 1 \le i < n: (v_i, v_{i+1}) \in E$
@@ -175,11 +177,11 @@ V$ /dominates/ $y \in V$ if and only if $x \in V$ is on every path from
 the entry node to $y$. If $x$ dominates $y$ and $x \ne y$, then $x$ is a
 /strict dominator/ of $y$. The closest strict dominator of $y$ is the
 /immediate dominator/ of $y$ on any path from entry node to $y$ in
-CFG. /Dominator tree/ is a graph $(V, E_d)$, where vertices are from
-CFG and $(x, y) \in E_d$ if and only if $x$ is immediate dominator of
-$y$.  If $x \in V$, then /dominance frontier/ $DF(X)$ is a set of all $y
-\in V$ such that $x$ dominates a predecessor of $y$, but $x$ does not
-strictly dominate $y$.
+CFG. /Dominator tree/ is a graph $(V, E_d)$, where nodes are from CFG
+and $(x, y) \in E_d$ if and only if $x$ is immediate dominator of $y$.
+If $x \in V$, then /dominance frontier/ $DF(X)$ is a set of all $y \in V$
+such that $x$ dominates a predecessor of $y$, but $x$ is not a strict
+dominator of $y$.
 
 Programs are commonly divided into /basic blocks/. A basic block is a
 maximum sequence of elementary instructions that does not contain a
@@ -193,11 +195,11 @@ that reads its value.
 
 ** DONE Static single assignment form
 Programs may be transformed without changing their behavior. One of
-transformations that do not change program's behavior is
-transformation to Static Single Assignment form (or SSA for
+the transformations that do not change program's behavior is the
+transformation to static single assignment form (or SSA for
 short)\nbsp{}\cite{CytronSSA}. The transformation itself yields some useful
-data about the program and the SSA form is particularly useful for
-compilers and code analyzers.
+data about the program, and the SSA form is convenient for compilers
+and code analyzers.
 
 #+BEGIN_LaTeX
     \begin{figure}[H]
@@ -223,11 +225,11 @@ compilers and code analyzers.
     \label{fig:programSSA}
     \end{figure}
 #+END_LaTeX
-A program $\mathcal P$ is in /Static Single Assignment form/ if, and
+A program $\mathcal P$ is in /static single assignment form/ if, and
 only if the program contains exactly one assignment to each
 variable\nbsp{}\cite{RosenGVNRC}. Figure\nbsp{}\ref{fig:programSSA} shows a simple
 program and its SSA form.
-\clearpage
+
 #+BEGIN_LaTeX
   \begin{figure}
       \begin{lstlisting}[language=C]
@@ -268,7 +270,7 @@ while ($i_2 = \Phi(i_1, i_3), i_2 < 10$) {
     $i_3$ = $i_2$ + 1;
 }
       \end{lstlisting}
-  \caption{SSA form of the program from figure~\ref{fig:loop1}}
+  \caption{SSA form of the program from Figure~\ref{fig:loop1}}
   \label{fig:loop2}
     \end{figure}
 #+END_LaTeX
@@ -296,15 +298,15 @@ instruction $I_2$ such, that:
         \centering
         
         \begin{lstlisting}[language=C]
-int i = 5; /\encircle{1}/
-int j = 4; /\encircle{2}/
+int $i$ = 5; /\encircle{1}/
+int $j$ = 4; /\encircle{2}/
           
-if (i == 0) {
-    j = 1; /\encircle{3}/
-} else if (i == 2) {
-    j = 3; /\encircle{4}/
+if ($i$ == 0) {
+    $j$ = 1; /\encircle{3}/
+} else if ($i$ == 2) {
+    $j$ = 3; /\encircle{4}/
 }
-printf("%d", j);
+printf("%d", $j$);
         \end{lstlisting}
       \end{subfigure}
       \begin{subfigure}{0.5\textwidth}
@@ -354,18 +356,18 @@ analysis (RDA) performs certain over-approximations.
 
 One of the ways to compute reaching definitions is to ``follow'' the
 control flow graph of the program while remembering the last
-definition for each variable for each of its vertices. Classical
-dataflow analysis\nbsp{}\cite{TonellaDenseRDA} maintains two working sets
-for each $v \in V$: $IN_v$ and $OUT_v$. $IN_v$ and $OUT_v$ contain incoming
-resp. outgoing reaching definitions. Both of them are mappings of
-variables to CFG nodes. Figure \ref{fig:denseRDA} demonstrates the
-algorithm.
+definition for each variable for each of its nodes. Classical dataflow
+analysis\nbsp{}\cite{TonellaDenseRDA} maintains two working sets for each
+node of the CFG: $IN_v$ and $OUT_v$. $IN_v$ and $OUT_v$ contain incoming
+or outgoing reaching definitions respectively. Both of them are
+mappings of variables to CFG nodes. Figure \ref{fig:denseRDA}
+demonstrates the algorithm.
 
-In order to translate the semantics of instructions into something an
+To translate the semantics of instructions into something an
 RDA can understand, $KILL$ and $GEN$ sets are commonly used. Let $(V,
 E)$ be a CFG. For every $x \in V$, $GEN_x$ is set of variables for which
-$x$ is a definition. $KILL_x \subseteq GEN_x$ is set of variables that
-are overwritten in this vertex. The $KILL$ and $GEN$ sets do *not*
+$x$ is a definition. $KILL_x$ is set of variables that
+are overwritten in this node. The $KILL$ and $GEN$ sets do *not*
 change during the process of the analysis.
 
 #+BEGIN_LaTeX
@@ -391,10 +393,10 @@ change during the process of the analysis.
 
 Reaching definitions analyses have some properties\nbsp{}\cite{rptRDA} that
 affect their accuracy. Less accurate analyses need to make some
-conservative assumptions about the program in order to be
-correct. This sub-chapter describes three properties of reaching
-definitions analyses: instance-wiseness, field sensitivity and ability
-to recognize execution patterns.
+conservative assumptions about the program to be correct. This
+sub-chapter describes three properties of reaching definitions
+analyses: instance-wiseness, field sensitivity and ability to
+recognize execution patterns.
 
 *** DONE Instance-wise and statement-wise analysis
 When analyzing programs with a cyclic CFG, there are multiple
@@ -402,7 +404,7 @@ When analyzing programs with a cyclic CFG, there are multiple
 execution of an instruction creates a new instance of the instruction.
 
 Along with the definition, use and variable, an instance-wise reaching
-definitions analysis\nbsp{}\cite{rptRDA} is able to tell which instance of the
+definitions analysis\nbsp{}\cite{rptRDA} can tell which instance of the
 instructions are involved. The information about instance might
 include for example the for loop indexing variable $i$. There might be
 more variables in case the instruction is inside of a nested loop.
@@ -423,7 +425,7 @@ for(int $i$ = 0; $i$ < 5; ++$i$) {
 #+END_LaTeX
 
 Differences between instance-wise analysis and statement-wise analysis
-are demonstrated on a simple program in figure
+are demonstrated on a simple program in Figure
 \ref{fig:instWise}. Reaching definitions for $a$ at location
 \encircle{2} are \encircle{1} and \encircle{3}. The difference is how
 much information the analysis is able to provide about the reaching
@@ -463,7 +465,7 @@ find no definitions for it.
 A field-sensitive analysis considers array indices and correctly
 reports no reaching definitions for $a[2]$ at location \encircle{3}.
 
-A field-insensitive analysis ignores indices of the array and for
+A field-insensitive analysis ignores indices of the array, and for
 location \encircle{3}, it would report, that reaching definitions of
 $a[2]$ are \encircle{1} and \encircle{2}. This is an
 over-approximation that has to be performed by the field-insensitive
@@ -474,14 +476,14 @@ analysis.
   \begin{figure}
     \begin{lstlisting}[language=C]
 int foo(int $a$) {
-int $c$ = 0;
-if ($a$ < 0) {
-  $c$ = 1; /\encircle{1}/
-}
-if (a >= 0) {
-  $c$ = 2; /\encircle{2}/
-}
-return $c$; /\encircle{3}/
+    int $c$ = 0;
+    if ($a$ < 0) {
+      $c$ = 1; /\encircle{1}/
+    }
+    if (a >= 0) {
+      $c$ = 2; /\encircle{2}/
+    }
+    return $c$; /\encircle{3}/
 }
     \end{lstlisting}
     \caption{Demonstration of effects of execution patterns recognition on reaching definitions analysis}
@@ -490,13 +492,13 @@ return $c$; /\encircle{3}/
 #+END_LaTeX
 
 Reaching definitions analysis is often not the only analysis that is
-part of a program analysis framework. More often than not, there are
-more analyses that derive various properties of a program or its
-parts. Reaching definitions analysis can sometimes take advantage of
-results of previously ran analyses and achieve better accuracy or
-speed\nbsp{}\cite{rptRDA}.
+part of a program analysis framework. More often than not, the
+framework contains more analyses that derive various properties of a
+program or its parts. Reaching definitions analysis can sometimes take
+advantage of results of previously ran analyses and achieve better
+accuracy or speed\nbsp{}\cite{rptRDA}.
 
-Consider the program in figure\nbsp{}\ref{fig:executionPatterns}. If an external
+Consider the program in Figure\nbsp{}\ref{fig:executionPatterns}. If an external
 analysis reports that there is no program execution where $a < 0$, the
 reaching definitions analysis could take this into account and derive
 that \encircle{1} is not a reaching definition of $c$ at \encircle{3}
@@ -528,16 +530,16 @@ One of the essential features of programming languages is
 pointers. They can be utilized to implement dynamic data structures,
 which are very widely used. As pointers make it possible to create
 variables that refer to variables, they inherently make programs more
-difficult to understand and analyze. In order to compute reaching
-definitions in programs that use pointers, an RDA must use information
-from pointer analysis which took place prior to the RDA.
+difficult to understand and analyze. To compute reaching definitions
+in programs that use pointers, an RDA must use information from
+pointer analysis which took place before the RDA.
 
 *** DONE Pointer analysis
 Pointer analysis\nbsp{}\cite{ChalupaPTA} is, similarly to reaching
 definitions analysis, a static program analysis. It computes a set
-$\mathcal V$ of variables for each pointer $p$. This set will be
-referred to as /points-to/ set. If $p$ may point to some variable $v$,
-then $v \in \mathcal V$.
+$\mathcal V$ of variables for each pointer $p$. We refer to this set
+as referred to as /points-to/ set. If $p$ may point to some variable
+$x$, then $x \in \mathcal V$.
 
 Reaching definitions analysis uses the data from pointer analysis to
 recognize possible uses and definitions of variables. The accuracy of
@@ -559,28 +561,28 @@ the memory objects while leaving the other untouched.
 #+BEGIN_LaTeX
     \begin{figure}
       \begin{lstlisting}[language=C]
-  int *foo() {
-      return malloc(sizeof(int)); /\encircle{3}/
-  }
+int *foo() {
+    return malloc(sizeof(int)); /\encircle{3}/
+}
     
-int *a = foo();
-int *b = foo();
-*a = 1; /\encircle{1}/
-*b = 2; /\encircle{2}/
+int *$a$ = foo();
+int *$b$ = foo();
+*$a$ = 1; /\encircle{1}/
+*$b$ = 2; /\encircle{2}/
       \end{lstlisting}
       \caption{Demonstration of weak definitions of heap-allocated memory. Source: DG library documentation}
       \label{fig:heapWeak}
     \end{figure}
 #+END_LaTeX
 
-Consider the program in figure\nbsp{}\ref{fig:heapWeak}. The program could
+Consider the program in Figure\nbsp{}\ref{fig:heapWeak}. The program could
 cause problems if the pointer analysis used by RDA uses statements to
 identify memory objects. Two objects allocated by the same statement
 are then treated as the same memory. This is not accurate, as $a$ and
 $b$ are two distinct memory objects. If \encircle{2} is labeled as
-a\nbsp{}strong update, the definition at \encircle{1} would be over-written
-be the definition at \encircle{2}, because they were allocated by the
-same statement - =malloc= at \encircle{3}. As a consequence, the RDA
+a\nbsp{}strong definition, the definition at \encircle{1} would be overwritten
+by the definition at \encircle{2}, because they were allocated by the
+same statement -- =malloc= at \encircle{3}. As a consequence, the RDA
 has to treat definitions of heap-allocated memory as weak definitions.
 
 Apart from the dense algorithm, several other algorithms to compute
@@ -607,7 +609,7 @@ In case a program point $p$ has $n$ predecessors, it is sufficient
 that the reachability of $d$ is reported by at least one of them.
 
 It is worth noting that this approach has a particular property that
-makes it suitable for a slicer: It is able to start from the slicing
+makes it suitable for a slicer: It can start from the slicing
 criterion and gradually find all definitions that affect the
 criterion. This way, it can avoid computing of irrelevant information.
 
@@ -615,7 +617,7 @@ criterion. This way, it can avoid computing of irrelevant information.
 Another approach to computing reaching definitions was introduced by
 Madsen and M\o{}ller \cite{MadsenSDAPR}. This approach requires
 pre-computing dominator tree\nbsp{}\cite{CytronSSA} for nodes of the
-CFG, as explained in section\nbsp{}\ref{domTree}.
+CFG, as explained in Section\nbsp{}\ref{domTree}.
 
 When the algorithm encounters a use of a variable, it searches
 dominator tree of the program backward until it finds a definition of
@@ -628,9 +630,9 @@ $v$. Then, for each $d_p \in \mathcal D_p$ where $d_n$ is a strict
 dominator of $d_p$, all triples $(d_p, v, u) \in DU$ are removed from
 $DU$.
 
-While processing definitions and uses, the algorithm places \Phi nodes
-for variables when necessary. As a side-effect, SSA form of the
-program is produced.
+While processing definitions and uses, the algorithm places nodes with
+\Phi functions (\Phi nodes) for variables when necessary. As a side-effect, SSA form
+of the program is produced.
 
 The input program is processed by the algorithm until fixpoint -- there is no new use
 discovered.
@@ -643,19 +645,20 @@ replace variables in uses by the most recent definition -- reaching
 definition. Reaching definitions are a side-effect of transformation
 to SSA form.
 
-For the purpose of this thesis, we have studied two algorithms for
-computing SSA form. One of them has been introduced by Cytron et
-al\nbsp{}\cite{CytronSSA}.  The second algorithm, invented by Braun et
-al\nbsp{}\cite{BraunSSA} is simpler and has been experimentally proven to
-be as fast as the Cytron et al. algorithm\nbsp{}\cite{BraunSSA}.
+We have studied two algorithms for computing SSA form. One of them has
+been introduced by Cytron et al\nbsp{}\cite{CytronSSA}. The second
+algorithm, invented by Braun et al\nbsp{}\cite{BraunSSA} is simpler and has
+been experimentally proven to be as fast as the Cytron et
+al. algorithm\nbsp{}\cite{BraunSSA}.
 
 *** DONE Cytron et al. algorithm
 
 Algorithm introduced by Cytron et al.\nbsp{}\cite{CytronSSA} uses dominance
 information to find locations of \Phi nodes, so it requires the dominator
-tree of nodes in the CFG to be computed already. It also requires
-having a set $\mathcal A(\mathcal V)$ for every variable $\mathcal V$
-that contains all definitions of $\mathcal V$.
+tree of nodes in the CFG to be computed before the transformation can
+start. It also requires having a set $\mathcal A(\mathcal V)$ for
+every variable $\mathcal V$ that contains all definitions of $\mathcal
+V$.
 
 The algorithm starts by computing dominance frontiers from a dominator
 tree. Dominance frontiers are then used to compute where in the
@@ -704,9 +707,9 @@ continues to all predecessors recursively.
 The key part of the algorithm can be seen in
 Figure\nbsp{}\ref{fig:braunSSA}. Braun et al. present a way to reduce the
 number of added \Phi nodes, which allows their algorithm to produce
-minimal SSA form. That part of the algorithm is not too important, so
-we can assume that a call to =tryRemoveTrivialPhi(phi)= always returns
-=phi= for simplicity.
+minimal SSA form. That part of the algorithm is responsible for
+removing trivial \Phi nodes. We can imagine that a call to
+=tryRemoveTrivialPhi(phi)= always returns =phi= for simplicity.
 
 #+BEGIN_LaTeX
   \begin{figure}[H]
@@ -751,7 +754,7 @@ we can assume that a call to =tryRemoveTrivialPhi(phi)= always returns
         \Return \TryRemoveTrivialPhi{phi} \;
       }
     \end{algorithm}
-    \caption{Braun et al. algorithm pseudocode. Source: Braun et al.~\cite{BraunSSA}}
+    \caption{Braun et al. algorithm pseudocode. Source: Simple and Efficient Construction of Static Single Assignment Form~\cite{BraunSSA}}
     \label{fig:braunSSA}
   \end{figure}
 #+END_LaTeX
@@ -793,7 +796,7 @@ is introduced in the following section.
 LLVM\nbsp{}\cite{LLVM} is an infrastructure for compilers and optimizers. It
 consists of multiple libraries and tools. One of the tools is clang[fn::https://clang.llvm.org/] -- a compiler of C language.
 
-LLVM defines its own intermediate representation(LLVM IR) of a program. The
+LLVM defines its intermediate representation (LLVM IR) of a program. The
 representation looks very similar to assembler.
 
 \label{partialSSA} Any program in LLVM IR is guaranteed to be in
@@ -806,17 +809,17 @@ reaching definitions information for its register variables.
 * DONE Implementation
 \label{ch:Implementation} This chapter starts with an introduction of
 the DG library and the LLVM infrastructure. It continues by discussing
-the designed modifications of the Marker algorithm and finally, the
-new reaching definitions analysis implementation.
+the designed modifications of the Braun et al. algorithm and finally,
+the new reaching definitions analysis implementation.
 
 ** DONE DG Library
 The slicer used in \sbt{} uses the DG library\nbsp{}\cite{ChalupaDG} to
 create dependence graph and slice away unnecessary parts of
 the verified program. New reaching definitions analysis has been
-implemented to the DG library, so it can be used with any software
+implemented in the DG library, so it can be used with any software
 that uses DG.
 
-Before processing any program, DG loads the program into its own
+Before processing any program, DG loads the program into its
 framework. Analyses that are part of DG are independent of the program
 representation because they only use DG framework which handles the
 details. However, DG currently supports only LLVM intermediate
@@ -851,9 +854,9 @@ be addressed by the RDA, too.
 *** DONE Reaching definitions analysis framework in the DG library
 DG uses reaching definitions analysis to calculate data dependencies
 between instructions. The original reaching definitions analysis in DG
-uses the dense approach, as described in section \ref{denseRDA}.
+uses the dense approach, as described in Section \ref{denseRDA}.
 
-Prior to the reaching definitions analysis itself, DG builds a
+Before the reaching definitions analysis itself, DG builds a
 subgraph of program's control flow graph\index{CFG} from the program
 representation. The subgraph does not contain all types of
 instructions. Instead, it consists only of store instructions, calls,
@@ -866,13 +869,13 @@ defined in a particular CFG node.
 
 ** DONE Implemented reaching definitions analysis algorithm
 
-The implemented reaching definitions analysis is based on the Marker
-algorithm\nbsp{}\cite{BraunSSA}. As described in\nbsp{}\ref{marker}, the algorithm
+The implemented reaching definitions analysis is based on the Braun et al.
+algorithm\nbsp{}\cite{BraunSSA}. As described in\nbsp{}Section \ref{marker}, the algorithm
 transforms a program into SSA form, which is not exactly what we
 need. We start by adapting the algorithm to compute reaching
 definitions.
 
-*** DONE Computing reaching definitions from Marker algorithm
+*** DONE Computing reaching definitions from Braun et al. algorithm
 In SSA form, every use of a variable has exactly one reaching
 definition. Thanks to this property, it is trivial to compute reaching
 definitions in a program that is in SSA form. Thus, transforming
@@ -886,7 +889,7 @@ definitions. We split up the computation into two phases:
    consist of multiple \Phi nodes, but it might be trivial as well. The
    construction is straightforward: whenever a variable use $u$ is
    encountered, lookup the definition of the variable (using
-   =readVariable=). If a \Phi node $y$ is created as a result, add an
+   =readVariable=). When a \Phi node $y$ is created as a result, add an
    edge $(x, y)$ to the sparse RD graph for each operand $x$ of
    $y$. Then, for the definition $d$ of the variable returned by
    =readVariable=, add an edge $(u, d)$ to the sparse RD graph.
@@ -903,7 +906,7 @@ we modify the new algorithm to be field-sensitive too.
 *** DONE Field sensitivity
 \label{ch:implFieldSens} Every definition and use have an associated
 interval of bytes in memory that is being accessed by the
-instruction. The data structure used for =current_def= and =last_def= does
+instruction. The data structure used for =current_def= does
 not consider the interval when looking up definitions in
 =readVariable=. We have decided to design a new custom data structure
 that considers the intervals while looking up variables. The data
@@ -914,13 +917,12 @@ When a definition is encountered, it is necessary to save the interval
 of the definition along with the CFG node where the definition is to
 the =IntervalMap=.
 
-When  use is encountered, modified =readVariable= function looks up
-overlapping definitions from the =IntervalMap=. =readVariable=
-is modified to return a set of definitions rather than a single
-definition. That is because two or more subintervals of the used
-interval could be defined by different instructions and all of the
-instructions are reaching definitions, as they do not overwrite one
-another completely.
+When use is encountered, modified =readVariable= function looks up
+overlapping definitions from the =IntervalMap=. =readVariable= is
+modified to return a set of definitions rather than a single
+definition. That is because different instructions could define two or
+more subintervals of the used interval and all of the instructions are
+reaching definitions, as they do not overwrite one another completely.
 
 When =readVariable= finds a definition in the current block of a
 subinterval $i_S$, which is smaller than the use interval $i_U$, the
@@ -945,23 +947,22 @@ definition of an unknown interval, the analysis must assume it could
 be definition of any part of the interval. Multiple definitions of
 unknown intervals should not kill each other, as they could both be
 reaching definitions for all uses reachable in the CFG by a path where
-the whole range of the variable is not over-written. This issue is
+the whole range of the variable is not overwritten. This issue is
 addressed in the following section.
 
 *** DONE Strong and weak definitions
 As the algorithm needs to remember multiple definitions in case the
 interval is unknown or a pointer might point to multiple variables, we
-use weak definitions to achieve that. Marker algorithm again needs to
+use weak definitions to achieve that. Braun et al. algorithm again needs to
 be modified to consider them.
 
-We extend the Marker algorithm with two new map structures:
-=current_weak_def= and =last_weak_def=. The semantics is similar to
-=current_def= and =last_def= from the Marker algorithm.
+We extend the Braun et al. algorithm with another map structure:
+=current_weak_def=. The semantics is similar to
+=current_def= from the Braun et al. algorithm.
 
 In =writeVariable=, the choice of the structure where to save the
-definition gets a little more complex again. Weak updates will be
-saved to =last_weak_def= or =current_weak_def= depending on the
-context, while strong updates will be saved to =last_def= or
+definition gets a little more complex again. Weak definitions will be
+saved to =current_weak_def=, while strong definitions will be saved to
 =current_def=. When encountering a strong definition, intervals of
 weak definitions need to be modified not to overlap with the strong
 definition. This way, the strong definition ``kills'' the weak
@@ -1000,7 +1001,7 @@ incorrect to overwrite the definition at \encircle{2} by definition at
 \encircle{1}. Thus, the definition at \encircle{2} has to be weak.
 
 *** DONE Sealed blocks
-The Marker algorithm is capable of constructing SSA form of programs
+The Braun et al. algorithm is capable of constructing SSA form of programs
 while loading the program representation from a file. Because of this,
 it maintains a set of blocks called =sealedBlocks=, that holds all
 blocks that already have all their predecessors added. In our case, we
@@ -1013,7 +1014,7 @@ been implemented in the existing framework. A technical guide on how
 to run the implementation can be found in Appendix\nbsp{}\ref{ch:testing}.
 
 Thanks to LLVM's transformation to partial SSA form (as described in
-\ref{partialSSA}), there is no need to compute reaching definitions of
+Section \ref{partialSSA}), there is no need to compute reaching definitions of
 LLVM register variables. Reaching definitions for register variables
 have already been computed while translating the C program into LLVM
 Intermediate Representation (LLVM IR). Therefore, the implementation
@@ -1038,11 +1039,11 @@ We have designed and implemented an interface for subgraph builders
 from the LLVM IR called =LLVMRDBuilder=. This interface allows us to
 implement a =build= function, that returns the entry node of the
 reaching definitions subgraph. The implementation of the new subgraph
-builder is very similar to the original implementation, with two major
-differences. The new subgraph builder splits up LLVM basic blocks when
-a function call is encountered, and it also adds information about
-which memory is used in which CFG node. These additions are discussed
-in the following two sections.
+builder is very similar to the original implementation, with two
+significant differences. The new subgraph builder splits up LLVM basic
+blocks when a function call is encountered, and it also adds
+information about which memory is used in which CFG node. The
+following two sections discuss these additions.
 
 *** DONE Adding use information to control flow graph
 Now, the subgraph builder can add information about uses of variables
@@ -1059,7 +1060,7 @@ could point to. For looking up the variables, it uses a
 newly-introduced method =getPointsTo=, which fetches the information
 from the pointer analysis.
 
-The instruction that is a use could possibly use a smaller portion of
+The instruction that is a use node could use a smaller portion of
 the memory than the allocation size. This is the case when accessing
 an individual element of a larger data structure. A field-sensitive
 reaching definitions analysis requires the length to be set to the
@@ -1068,14 +1069,13 @@ type the value is being loaded to.
 
 *** DONE Splitting basic blocks on function calls
 The original RDA does not need information about basic blocks in the
-program. This is required by the new analysis, so the new
-implementation of subgraph builder has to add the information into the
-subgraph.
+program. The new analysis requires this, so the new implementation of
+subgraph builder has to add the information into the subgraph.
 
 The basic block used by LLVM IR is more or less suitable for the new
 analysis, with a major problem: When a function is called, the call
 instruction does not end an LLVM IR basic block. This is against the
-definition of a basic block introduced in\nbsp{}\ref{ch:KTPA}, as a call
+definition of a basic block introduced in\nbsp{}Section \ref{ch:KTPA}, as a call
 instruction is a jump to a different address.
 
 #+BEGIN_LaTeX
@@ -1091,7 +1091,7 @@ store i32 2, i32* %1
   \end{figure}
 #+END_LaTeX
 
-Consider the program in figure\nbsp{}\ref{fig:llvmBlocks}. The block calling
+Consider the program in Figure\nbsp{}\ref{fig:llvmBlocks}. The block calling
 the function would be processed first, and =foo= would then see the
 =store i32 2, %1= instruction as a reaching definition of =%1=. This
 is, however, not correct as the instruction has not been executed
@@ -1135,7 +1135,7 @@ pointer operands.
 *** DONE Treating unknown memory
 \label{ch:unknownMemory} Sometimes, pointer analysis is unable to tell
 where a pointer may point, so the analysis has to make some
-conservative assumptions about the program in order to be correct. In
+conservative assumptions about the program to be correct. In
 this case, the analysis assumes that such pointer could point to any
 variable and treats the CFG node as if it was a definition or a use of
 all variables in the program. Whether it is a definition or a use is
@@ -1143,8 +1143,7 @@ decided based on the semantics of the instructions and how the pointer
 is used.
 
 After the subgraph is built, it is searched by a separate class
-=AssignmentFinder=, which does exactly what was explained in the
-previous paragraph. It uses a two-phase algorithm to do that: In the
+=AssignmentFinder=. It uses a two-phase algorithm to do that: In the
 first phase, all variables in the program are added to a list. In the
 second phase, every store to an unknown pointer and load from an
 unknown pointer is turned into a weak definition of all variables in
@@ -1153,11 +1152,11 @@ respectively. Doing this removes some complex handling of unknown
 pointers from the next phase of the analysis.
 
 *** DONE Using intervals to handle field-sensitivity
-\label{chap:intervals} The Marker algorithm itself does not consider
+\label{chap:intervals} The Braun et al. algorithm itself does not consider
 aggregate data structures. We have introduced several modifications in
 order to incorporate it. As mentioned before in
-section\nbsp{}\ref{ch:implFieldSens}, we use a different data structure for
-the work structures of the Marker algorithm. This section describes
+Section\nbsp{}\ref{ch:implFieldSens}, we use a different data structure for
+the work structure of the Braun et al. algorithm. This section describes
 how the new data structure is implemented and used.
 
 =IntervalMap= is the most important data structure of the
@@ -1173,7 +1172,7 @@ collects all values from the interval map such, that the specified
 interval is covered by the union of key intervals of the values
 returned.
 
-=collectAll= works with weak updates. As opposed to =collect=, it
+=collectAll= works with weak definitions. As opposed to =collect=, it
 does not stop when the specified interval is a subset of the union of the
 result key intervals. Rather, it searches the whole IntervalMap and
 returns all values which are saved under intervals that overlap with
@@ -1195,10 +1194,9 @@ with some of the intervals inside, the set ensures that these two
 intervals are united into a single interval.
 
 =IntervalMap= is used as a data structure for structures that are
-needed by Braun et al. algorithm -- that is =current_def=,
-=current_weak_def=, =last_def= and =last_weak_def=. This way, the
-field-sensitivity is considered in the phase of building the sparse RD
-graph.
+needed by Braun et al. algorithm -- that is =current_def= and
+=current_weak_def=. This way, the field-sensitivity is considered in
+the phase of building the sparse RD graph.
 
 The =IntervalMap=, is unable to handle an unknown offset. Addressing
 unknown offset requires further modifications of the algorithm which
@@ -1208,7 +1206,7 @@ are discussed in the following section.
 *** DONE Treating unknown offset
 When the pointer analysis returns an unknown offset of a definition or
 a use of a variable, the RDA needs to address it. In case there is a
-definition of an unknown offset of a variable, it could be definition
+definition of an unknown offset of a variable, it could be a definition
 of any of its bytes, so the new analysis performs an
 over-approximation. In the over-approximation, the analysis assumes
 that the whole variable is defined. However, this definition may not
@@ -1228,37 +1226,75 @@ printf("%d", $a$[0]); /\encircle{1}/
       \end{figure}
 #+END_LaTeX
 
-Consider the program in figure\nbsp{}\ref{fig:unknownOffset}. Assuming the
+Consider the program in Figure\nbsp{}\ref{fig:unknownOffset}. Assuming the
 values of $i$ and $j$ are unknown, both of those definitions could be
 reaching definitions of $a[0]$ at \encircle{1}. Thus, the analysis has
 to assume they are weak definitions despite the fact that $a$
 points to a single memory object -- the array.
 
-* TODO Experimental evaluation of the new analysis
+* DONE Experimental evaluation of the new analysis
 \label{ch:Experiment} In this chapter, the new implementation is
 evaluated experimentally. For the evaluation, we have used a subset of
 benchmarks from the software verification competition
-SV-COMP[fn::https://sv-comp.sosy-lab.org]. Each benchmark is given as
-a C program with a list of properties it satisfies. After running a
-single benchmark, the output of \sbt{} is inspected and compared with the
+SV-COMP[fn::https://sv-comp.sosy-lab.org]. Each benchmark is a C program
+with a list of properties it satisfies. After running a single
+benchmark, the output of \sbt{} is inspected and compared with the
 expected output. We measure the CPU time it took \sbt{} to compute
 individual phases of the process, including reaching definitions
 analysis.
 
-** TODO Time
-- the new analysis is slower
-- explain why
-  - redundant phi nodes
-  - def/use of unknown memory
-  - interval map
-** TODO Out of memory errors
-# TODO maybe extend this section?
+** DONE Time
+We have measured the time it took to perform the RDA with the new and
+old implementation for a number of benchmarks. From the data, we have
+created the scatter plot in Figure ... . Each point of the scatter
+plot represents a single benchmark. Its X coordinate represents the
+time it took the new implementation to analyze the program. Y
+coordinate represents the time it took the original implementation to
+analyze the same program.
+
+#+BEGIN_SRC gnuplot :exports results :file denseVsSemisparse.png
+  set datafile separator ';'
+
+  set logscale xy 10
+
+  f(x) = x
+
+  set xlabel 'new implementation (s)'
+  set ylabel 'old implementation (s)'
+
+  plot 'results.csv' using 2:7 with points pt 7 ps 1 title 'results', f(x) title 'y = x'
+#+END_SRC
+
+As we can see in the figure, the new implementation is considerably
+slower than the original one. We think it is caused by the combination
+of multiple deficiencies of the current implementation:
+
+1. Processing of definitions and uses of unknown memory, as explained
+   in Section\nbsp{}\ref{ch:unknownMemory}, takes too long. We could simply
+   solve definitions by adding definitions of unknown memory as weak
+   definitions every time a definition is being looked up in the
+   algorithm. As the algorithm is lazy, processing uses of unknown
+   memory will be more complicated to handle. We believe this is the
+   most significant bottleneck for the performance of our
+   implementation.
+2. All definitions of heap-allocated memory are weak
+   definitions. Thus, the whole CFG of the program is search every
+   time a use of (a part of) a heap-allocated value causes the whole
+   program to be traversed. This might be a bottleneck for performance
+   of our implementation.
+3. We believe there is too many trivial \Phi nodes inserted, which
+   prolongs the final phase of propagation of information. Eliminating
+   trivial \Phi nodes as explained by Braun et al.\nbsp{}\cite{BraunSSA} during
+   the construction of SSA form could help the performance of our
+   implementation.
+
+** DONE Out of memory errors
 Experiments revealed some cases where the new implementation ran out
 of memory on benchmarks where the original implementation did not. We
 have identified two possible causes for this:
 
 1. Handling of definitions and uses of unknown memory (discussed
-   in\nbsp{}\ref{ch:unknownMemory}) requires too much memory.
+   in Section\nbsp{}\ref{ch:unknownMemory}) requires too much memory.
 2. Intervals framework used for field-sensitivity consumes too much
    memory. Replacing it with a bit vector could result in more optimal
    memory consumption.
@@ -1267,7 +1303,7 @@ have identified two possible causes for this:
 There should be no difference between the new and the original
 analysis in terms of accuracy. However, we have noticed different
 results of slicing with the new implementation. Thanks to the interval
-framework introduced in\nbsp{}\ref{chap:intervals}, the new implementation
+framework introduced in\nbsp{}Section \ref{chap:intervals}, the new implementation
 of semi-sparse analysis is more accurate than the original
 implementation.
 
@@ -1304,7 +1340,7 @@ search for definitions, so it finds $\{ \encircle{5}, \encircle{4},
 
 With our new implementation, the slicer can slice away the
 instructions that initialize the array (at \encircle{1}) because they
-are over-written by \encircle{2}, \cdots \encircle{5}. As a result, the
+are overwritten by \encircle{2}, \cdots \encircle{5}. As a result, the
 slicer is able to produce slightly smaller programs in cases similar
 to the one presented above.
 
@@ -1317,21 +1353,20 @@ As a part of this thesis, we studied four algorithms for computing
 reaching definitions. Then, we chose to implement an algorithm based
 on the Braun et al. algorithm into \sbt{}. Prior to implementation, we
 have designed modifications for the algorithm to compute reaching
-definitions, work with aggregate data structures and weak updates. The
-modified algorithm has been implemented into \sbt{}. The new
-implementation is then compared with the original implementation in
-terms of accuracy, time and memory used. We found that the new
-analysis consumes too much memory in some cases and identified the
-cause of it. We experimentally proved that the new analysis is slower
-than the original one. The new implementation turned out to be more
-accurate than the original one in some cases.
+definitions, work with aggregate data structures and weak
+definitions. The modified algorithm has been implemented into
+\sbt{}. The new implementation is then compared with the original
+implementation in terms of accuracy, time and memory used. We found
+that the new analysis consumed too much memory in some cases and
+presented two possible causes of it. We experimentally proved that the
+new analysis is slower than the original one. The new implementation
+turned out to be more accurate than the original one in some cases.
 
 ** DONE Future work
 
 Uses of unknown memory in the current implementation consume too much
 memory and also time. In the future, we will optimize how our
-implementation treats definitions and uses of unknown
-memory.
+implementation treats definitions and uses of unknown memory.
 
 It is possible to further speed up computation of reaching definitions
 by incorporating the trivial phi node removal algorithm introduced by
@@ -1365,20 +1400,22 @@ aggregates[fn::https://llvm.org/docs/Passes.html\#sroa-scalar-replacement-of-agg
 pass replaces arrays and structures by scalar values in case it is
 possible.
 
+\printbibliography[heading=bibintoc]
 \appendix
 
-* TODO Running the new implementation
+* DONE Running the new implementation
 \label{ch:testing} The new reaching definitions analysis is part of
 the DG library. The source code along with build files can be found in
-=dg.zip=. This guide targets Ubuntu system of version at least
-16.04. It has been tested on a fresh installation of Ubuntu 18.04
-inside Docker.
+=dg.zip=. This guide is targeted for Ubuntu system of version at least
+16.04.
 
 ** DONE Running inside DG
+This part of the guide has been tested on a fresh installation of
+Ubuntu 18.04 inside a Docker container.
 
 *** DONE Build dependencies
 Before compiling the sources, it is necessary to install the following
-ubuntu packages:
+Ubuntu packages:
 
 #+BEGIN_SRC sh
 #  apt install build-essential cmake libz-dev llvm clang
@@ -1427,14 +1464,19 @@ sliced. This is done using the =clang= tool from LLVM:
   $ clang -emit-llvm -c -include "test_assert.h" sources/test1.c
 #+END_SRC
 
-That produces =main.bc= in the current directory. In order to run the
-sliced program, the slicing criterion has to be compiled and linked
-into the program. This is done using combination of =clang= and
+That produces =test1.bc= in the current directory. The =llvm-slicer=
+tool can now be utilized to slice the program.
+#+BEGIN_SRC sh
+  $ ~/dg/tools/llvm-slicer -c test_assert -rda ss main.bc
+#+END_SRC
+
+In order to run the sliced program, it has to be linked with the
+=test_assert= function. This is done using combination of =clang= and
 =llvm-link= tools:
 #+BEGIN_SRC sh
   $ cd ~/dg/tests/
   $ clang -emit-llvm -c "test_assert.c" -o "test_assert.bc"
-  $ llvm-link "test1.bc" "test_assert.bc" -o "test1_linked.bc"
+  $ llvm-link "test1.sliced" "test_assert.bc" -o "test1_linked.bc"
 #+END_SRC
 
 The linked file can then be run via =lli=:
@@ -1442,61 +1484,9 @@ The linked file can then be run via =lli=:
   $ lli test1_linked.bc
 #+END_SRC
 
-** TODO Compiling \sbt{} with the custom version of DG
-\sbt{} itself requires the following build dependencies to be compiled:
-#+BEGIN_SRC sh
-  # apt-get install curl rsync bison flex gcc-multilib \
-    libjson-c-dev build-essential cmake libz-dev llvm clang
-#+END_SRC
-
-*** DONE Clone \sbt{} from GitHub
-\sbt{} can be found on
-github[fn::https://github.com/staticafi/symbiotic]. The SHA-1 of the
-commit used for testing this guide is:
-=cff7857e7978a263ea923547b3c00a4544d4bbb0=. To choose that particular
-commit, \sbt{} needs to be cloned like this:
-
-#+BEGIN_SRC sh
-$ cd ~
-$ git clone https://github.com/staticafi/symbiotic
-$ cd symbiotic
-$ git checkout cff7857e7978a263ea923547b3c00a4544d4bbb
-$ git submodule init
-$ git submodule update
-#+END_SRC
-
-In order to use the new implementation inside \sbt{}, it is necessary
-to add the modified version of dg library into \sbt{}. This guide
-assumes the =dg.zip= from the thesis attachment is unzipped at =~/dg=.
-#+BEGIN_SRC sh
-$ cd ~/symbiotic
-$ cp -r ~/dg/src/ dg/
-#+END_SRC
-
-*** TODO Compiling \sbt{}
-Building symbiotic only involves running the =build.sh= script:
-#+BEGIN_SRC sh
-  $ cd ~/symbiotic
-  $ ./build.sh -j8
-#+END_SRC
-
-As the script also builds LLVM, it is highly recommended to use the
-=-j= parameter of =make= to utilize multiple CPU cores while
-building. The build might take very long time -- about an hour.
-
-
-If there were no problems, the command =symbiotic --version= should return the following:
-#+BEGIN_SRC
-
-#+END_SRC
-
-*** DONE Running \sbt{}
-When running symbiotic, the =--slicer-params= option can be used to
-enable the new implementation of RDA. Here is a simple example:
-#+BEGIN_SRC sh
-$ cd ~/symbiotic/
-$ ./scripts/symbiotic --slicer-params="-rda ss" \ 
-  --prp MemSafety file.c
-#+END_SRC
-
-\printbibliography[heading=bibintoc]
+** DONE Running inside \sbt{}
+\sbt{} has a guide on how to compile it on its
+homepage[fn::https://staticafi.github.io/symbiotic/getting_started.html].
+When running \sbt{}, command line parameter
+SRC_sh[]{--slicer-params="-rda ss"} instructs the slicer to use the new
+implementation of RDA.
