@@ -195,7 +195,7 @@ data about the program, and the SSA form is convenient for compilers
 and code analyzers.
 
 #+BEGIN_LaTeX
-    \begin{figure}[H]
+    \begin{figure}
     \begin{minipage}[t]{0.5\textwidth}
       \begin{lstlisting}[language=C]
         int $i$ = 1;
@@ -252,7 +252,7 @@ $i_2$. Transforming the program from Figure\nbsp{}\ref{fig:loop1} to SSA form
 results in the program shown in Figure\nbsp{}\ref{fig:loop2}.
 
 #+BEGIN_LaTeX
-    \begin{figure}[h]
+    \begin{figure}[H]
       \begin{lstlisting}[language=C]
 int $i_1$ = 0;
 int $i_2$;
@@ -285,6 +285,7 @@ instruction $I_2$ such, that:
   and there is no other instruction $I_3 \neq I_2$ that overwrites
   variable $\mathcal V$ and is executed after $I_2$ and before $I_1$
 
+\clearpage
 ** DONE Dense reaching definitions analysis
 \label{denseRDA} 
 
@@ -299,7 +300,7 @@ term /variable/ to refer to the abstract variable -- the location of
 instruction that allocated the part of memory.
 
 #+BEGIN_LaTeX
-    \begin{figure}[hbtp]
+    \begin{figure}[H]
       \begin{subfigure}{0.5\textwidth}
         \centering
         
@@ -345,25 +346,26 @@ printf("%d", $j$);
         \end{tikzpicture}
 
       \end{subfigure}
-      \caption{Program in C language, its CFG and reaching definitions. The edges are part of CFG, reaching definitions are represented by sets of instruction locations.}
+      \caption{Program in C language, its CFG and results of a dense RDA. The edges are part of CFG, reaching definitions are represented by sets of instruction locations.}
       \label{fig:programRD}
     \end{figure}
 #+END_LaTeX
-
-One of the ways to compute reaching definitions is to ``follow'' the
-control flow graph of the program while remembering the last
-definition for each variable for each of its nodes. Classical dataflow
-analysis\nbsp{}\cite{TonellaDenseRDA} maintains two working sets for each
-node $v$ of the CFG: $IN_v$ and $OUT_v$. $IN_v$ and $OUT_v$ contain incoming
-or outgoing reaching definitions respectively. Both of them are
-mappings of variables to CFG nodes.
 
 To translate the semantics of instructions into something an RDA can
 understand, $KILL$ and $GEN$ sets are commonly used. Let $(V, E)$ be a
 CFG. For every $x \in V$, $GEN_x$ is set of variables for which $x$ is a
 definition. $KILL_x$ is set of variables that are overwritten in this
 node. The $KILL$ and $GEN$ sets do *not* change during the the
-analysis. Figure \ref{fig:denseRDA} demonstrates the algorithm.
+analysis. 
+
+One of the ways to compute reaching definitions is to ``follow'' the
+control flow graph of the program while remembering the last
+definition for each variable for each of its nodes. Classical dataflow
+analysis\nbsp{}\cite{TonellaDenseRDA} maintains two working sets for each
+node $v$ of the CFG: $IN_v$ and $OUT_v$. $IN_v$ and $OUT_v$ contain
+incoming or outgoing reaching definitions respectively. Both of them
+are mappings of variables to CFG nodes. Figure \ref{fig:denseRDA}
+demonstrates the algorithm.
 
 #+BEGIN_LaTeX
   \begin{figure}[H]
@@ -429,6 +431,7 @@ $a$ at $\encircle{2}^{i+1}$ and that \encircle{1} is a reaching definition
 of $a$ at $\encircle{2}^0$. The upper index denotes the index of
 iteration.
 
+\clearpage
 *** DONE Field sensitivity
 Usage of aggregated data structures, such as arrays or C language
 =struct=-s introduces another issue that needs to be addressed by a
@@ -457,31 +460,12 @@ definitions in the program, so an accurate RDA should
 find no definitions for it.
 
 A field-sensitive analysis considers array indices and correctly
-reports no reaching definitions for $a[2]$ at location \encircle{3}.
+reports no reaching definitions for $a[2]$ at location \encircle{3}. 
 
 A field-insensitive analysis ignores indices of the array, and for
 location \encircle{3}, it would report, that reaching definitions of
-$a[2]$ are \encircle{1} and \encircle{2}. 
+$a[2]$ are \encircle{1} and \encircle{2}.
 *** DONE Execution patterns recognition
-
-#+BEGIN_LaTeX
-  \begin{figure}
-    \begin{lstlisting}[language=C]
-int foo(int $a$) {
-    int $c$ = 0;
-    if ($a$ < 0) {
-      $c$ = 1; /\encircle{1}/
-    }
-    if (a >= 0) {
-      $c$ = 2; /\encircle{2}/
-    }
-    return $c$; /\encircle{3}/
-}
-    \end{lstlisting}
-    \caption{Code for demonstration of effects of execution patterns recognition on reaching definitions analysis}
-    \label{fig:executionPatterns}
-  \end{figure}
-#+END_LaTeX
 
 Reaching definitions analysis is often not the only analysis that is
 part of a program analysis framework. More often than not, the
@@ -499,8 +483,24 @@ variable. The RDA that does not take it into account would report
 that both \encircle{1} and \encircle{2} are reaching definitions of
 $c$ at \encircle{3}.
 
-In this case, an analysis that does not recognize execution patterns
-yields an over-approximation, which is not a problem.
+#+BEGIN_LaTeX
+  \begin{figure}[H]
+    \begin{lstlisting}[language=C]
+int foo(int $a$) {
+    int $c$ = 0;
+    if ($a$ < 0) {
+      $c$ = 1; /\encircle{1}/
+    }
+    if (a >= 0) {
+      $c$ = 2; /\encircle{2}/
+    }
+    return $c$; /\encircle{3}/
+}
+    \end{lstlisting}
+    \caption{Code for demonstration of effects of execution patterns recognition on reaching definitions analysis}
+    \label{fig:executionPatterns}
+  \end{figure}
+#+END_LaTeX
 
 *** DONE Using strong and weak definitions
 The mentioned properties increase the accuracy of an RDA. The accuracy
@@ -517,6 +517,7 @@ previous definitions. In the dense algorithm discussed in
 Section\nbsp{}\ref{denseRDA}, strong definitions are in the $KILL$
 sets.
 
+\clearpage
 ** DONE Analyzing programs that use pointers
 One of the essential features of programming languages is
 pointers. They can be utilized to implement dynamic data structures,
@@ -573,9 +574,11 @@ Figure\nbsp{}\ref{fig:heapWeak}. This is not accurate, as $a$ and $b$ are
 two distinct memory objects. If \encircle{2} is labeled as a\nbsp{}strong
 definition, the definition at \encircle{1} would be overwritten by the
 definition at \encircle{2}, because they were allocated by the same
-statement -- =malloc= at \encircle{3}. As a consequence, the RDA has
-to treat definitions of heap-allocated memory as weak definitions. The
-same holds for variables returned from recursive procedures.
+statement -- =malloc= at \encircle{3}. 
+
+As a consequence, the RDA has to treat definitions of heap-allocated
+memory as weak definitions. The same holds for variables returned from
+recursive procedures.
 
 Apart from the dense algorithm, several other algorithms to compute
 reaching definitions have been introduced. Different algorithms are
@@ -781,22 +784,19 @@ well-known techniques:
    erroneous state is reached, the symbolic virtual machine reports
    the path in the program that leads to the error.
 
-\sbt{} is based on the LLVM compiler infrastructure\nbsp{}\cite{LLVM}. LLVM
-is introduced in the following section.
-
-** DONE LLVM
-LLVM\nbsp{}\cite{LLVM} is an infrastructure for compilers and optimizers. It
-consists of multiple libraries and tools. One of the tools is clang[fn::https://clang.llvm.org/] -- a compiler of C language.
-
-LLVM defines its intermediate representation (LLVM IR) of a program. The
-representation looks very similar to assembler.
+\sbt{} is based on LLVM. LLVM\nbsp{}\cite{LLVM} is an infrastructure for
+compilers and optimizers. It consists of multiple libraries and
+tools. One of the tools is clang[fn::https://clang.llvm.org/] -- a
+compiler of C language. LLVM defines its intermediate representation
+(LLVM IR) of a program. The representation looks very similar to
+assembler.
 
 \label{partialSSA} Any program in LLVM IR is guaranteed to be in
 /partial SSA form/. Partial SSA form means that there is at most one
 definition for each register. This form of program, however, makes no
 guarantees about variables in memory. Those are *not* in SSA
 form. Thanks to the partial SSA transformation, LLVM already provides
-reaching definitions information for its register variables.
+reaching definitions information for its register variables. 
 
 * DONE Implementation
 \label{ch:Implementation} This chapter starts with an introduction of
@@ -1290,7 +1290,6 @@ for (size_t $i$ = 0; $i$ < 4; ++$i$) {
   \end{figure}
 #+END_LaTeX
 
-
 Consider the program in Figure\nbsp{}\ref{fig:strongCoverage}. Now, let us
 investigate what instructions should be reaching definitions of $a[i]$
 at \encircle{6}. The offset is unknown, so our implementation looks
@@ -1377,8 +1376,10 @@ the DG library. The source code along with build files can be found in
 16.04.
 
 ** DONE Running inside DG
-This part of the guide has been tested on a fresh installation of
-Ubuntu 18.04 inside a Docker container.
+The new implementation can be tested with regression tests or
+=llvm-slicer= tool that is part of the DG library. This part of the
+guide has been tested on a fresh installation of Ubuntu 18.04 inside a
+Docker container.
 
 *** DONE Build dependencies
 Before compiling the sources, it is necessary to install the following
@@ -1428,7 +1429,8 @@ Every source program has to be compiled to LLVM IR before it can be
 sliced. This is done using the =clang= tool from LLVM:
 #+BEGIN_SRC sh
   $ cd ~/dg/tests/
-  $ clang -emit-llvm -c -include "test_assert.h" sources/test1.c
+  $ clang -emit-llvm -c -include "test_assert.h" \ 
+    sources/test1.c
 #+END_SRC
 
 That produces =test1.bc= in the current directory. The =llvm-slicer=
@@ -1443,7 +1445,8 @@ In order to run the sliced program, it has to be linked with the
 #+BEGIN_SRC sh
   $ cd ~/dg/tests/
   $ clang -emit-llvm -c "test_assert.c" -o "test_assert.bc"
-  $ llvm-link "test1.sliced" "test_assert.bc" -o "test1_linked.bc"
+  $ llvm-link "test1.sliced" "test_assert.bc" \
+     -o "test1_linked.bc"
 #+END_SRC
 
 The linked file can then be run via =lli=:
@@ -1454,6 +1457,5 @@ The linked file can then be run via =lli=:
 ** DONE Running inside \sbt{}
 \sbt{} has a guide on how to compile it on its
 homepage[fn::https://staticafi.github.io/symbiotic/getting_started.html].
-When running \sbt{}, command line parameter
-SRC_sh[]{--slicer-params="-rda ss"} instructs the slicer to use the new
-implementation of RDA.
+When running \sbt{}, command line parameter \texttt{--slicer-params="-rda ss"} instructs the slicer to
+use the new implementation of RDA.
